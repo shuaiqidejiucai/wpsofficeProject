@@ -5,6 +5,8 @@
 #include "wpsapi.h"
 #include "kfc/comsptr.h"
 #include "wpsapiex.h"
+#include "utilitytool.h"
+
 class WpsComment : public QObject
 {
     Q_OBJECT
@@ -32,6 +34,8 @@ public:
     bool insertTextForTextRange(kfc::ks_stdptr<wpsapi::Range> range, int start, int length, const QString& qsTexts, bool after = true);
 
     void extractPicture();
+
+    bool GetOleFileData();
 private:
     IKRpcClient * m_rpcClient;
     kfc::ks_stdptr<wpsapi::_Application> m_spApplication;

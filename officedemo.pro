@@ -38,16 +38,16 @@ SOURCES += \
     etcomment.cpp \
     main.cpp \
     mainwindow.cpp \
+    utilitytool.cpp \
     wppcomment.cpp \
-    wpscomment.cpp \
-    wpsmanager.cpp
+    wpscomment.cpp
 
 HEADERS += \
     etcomment.h \
     mainwindow.h \
+    utilitytool.h \
     wppcomment.h \
-    wpscomment.h \
-    wpsmanager.h
+    wpscomment.h
 
 FORMS += \
     mainwindow.ui
