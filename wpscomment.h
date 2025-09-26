@@ -33,9 +33,12 @@ public:
 
     bool insertTextForTextRange(kfc::ks_stdptr<wpsapi::Range> range, int start, int length, const QString& qsTexts, bool after = true);
 
-    void extractPicture();
+    void extractPicture(GetNextImageDataFun imageFunPtr);
 
-    bool GetOleFileData();
+    //bool GetOleFileData(QList<ST_OleFile>& stOleList);
+
+    void GetOleFileData(GetNextOleDataFun oleDataPtr);
+
 private:
     IKRpcClient * m_rpcClient;
     kfc::ks_stdptr<wpsapi::_Application> m_spApplication;

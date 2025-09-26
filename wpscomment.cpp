@@ -213,8 +213,12 @@ bool WpsComment::insertTextForTextRange(kfc::ks_stdptr<wpsapi::Range> range, int
     return true;
 }
 
-void WpsComment::extractPicture()
+void WpsComment::extractPicture(GetNextImageDataFun imageFunPtr)
 {
+    if(!imageFunPtr)
+    {
+        return;
+    }
     if(!m_spDocument)
     {
         return;
@@ -257,23 +261,99 @@ void WpsComment::extractPicture()
                 continue;
             }
             spSelection->CopyAsPicture();
-            QPixmap map = qApp->clipboard()->pixmap();
-            QLabel * label = new QLabel;
-            label->setPixmap(map);
-            label->show();
-        }
+            QImage image = qApp->clipboard()->image();
+            ST_FileOPerate fileOperate;
+            bool isNeedContinue = imageFunPtr(image, fileOperate);
+            if(isNeedDel)
+            {
+                // VARIANT missing;
+                // VariantInit(&missing);
+                // V_VT(&missing) = VT_ERROR;
+                // V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+                // long prop;
+                HRESULT hr = spShape->Delete();
 
+                if(SUCCEEDED(hr))
+                {
+                    i--;
+                }
+                //spSelection->Delete(&missing, &missing, &prop);
+            }
+            if(!isNeedContinue)
+            {
+                return;
+            }
+        }
     }
 }
 
-bool WpsComment::GetOleFileData(QList<ST_OleFile>& stOleList)
+// bool WpsComment::GetOleFileData(QList<ST_OleFile>& stOleList)
+// {
+//     bool successful = false;
+//     ks_stdptr<InlineShapes> inlineShapes;
+//     m_spDocument->get_InlineShapes(&inlineShapes);
+//     if(!inlineShapes)
+//     {
+//         return successful;
+//     }
+//     long count = 0;
+//     inlineShapes->get_Count(&count);
+//     for(int i = 1; i <= count; ++i)
+//     {
+//         ks_stdptr<InlineShape> shapePtr;
+//         inlineShapes->Item(i, &shapePtr);
+//         if(!shapePtr)
+//         {
+//             continue;
+//         }
+//         WdInlineShapeType inlineShapeType;
+//         shapePtr->get_Type(&inlineShapeType);
+//         if(inlineShapeType == wdInlineShapeEmbeddedOLEObject
+//             || inlineShapeType == wdInlineShapeEmbeddedOLEObject
+//             || inlineShapeType == wdInlineShapeOLEControlObject)
+//         {
+//             shapePtr->Select();
+//             ks_stdptr<Selection> spSelection;
+//             m_spApplication->get_Selection(&spSelection);
+//             if(!spSelection)
+//             {
+//                 continue;
+//             }
+//             spSelection->Copy();
+//             const QMimeData *  mdata = qApp->clipboard()->mimeData();
+//             if(mdata)
+//             {
+//                 QByteArray data = mdata->data(MimeDataKey);
+//                 QByteArray srcData;
+//                 if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+//                 {
+//                     if(srcData.isEmpty())
+//                     {
+//                         continue;
+//                     }
+//                     successful = UtilityTool::GetOleFileData(srcData, stOleList);
+//                 }
+//             }
+//         }
+//     }
+//     return successful;
+// }
+
+void WpsComment::GetOleFileData(GetNextOleDataFun oleDataPtr)
 {
-    bool successful = false;
+    if(!m_spDocument)
+    {
+        return;
+    }
+    if(!oleDataPtr)
+    {
+        return;
+    }
     ks_stdptr<InlineShapes> inlineShapes;
     m_spDocument->get_InlineShapes(&inlineShapes);
     if(!inlineShapes)
     {
-        return successful;
+        return;
     }
     long count = 0;
     inlineShapes->get_Count(&count);
@@ -310,12 +390,27 @@ bool WpsComment::GetOleFileData(QList<ST_OleFile>& stOleList)
                     {
                         continue;
                     }
-                    successful = UtilityTool::GetOleFileData(srcData, stOleList);
+                    ST_OleFile stOleFile;
+                    UtilityTool::GetOleFileData(srcData, stOleFile);
+                    bool isNeedDel = false;
+                    bool isContinue = oleDataPtr(stOleFile, isNeedDel);
+                    if(isNeedDel)
+                    {
+                        HRESULT hr = shapePtr->Delete();
+                        if(SUCCEEDED(hr))
+                        {
+                            i--;
+                        }
+                    }
+                    if(!isContinue)
+                    {
+                        return;
+                    }
                 }
             }
         }
     }
-    return successful;
+    return;
 }
 
 QList<kfc::ks_stdptr<Range> > WpsComment::GetTextRange()

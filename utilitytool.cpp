@@ -96,12 +96,8 @@ static bool parseOle10Native(const QByteArray& src, ST_OleFile & stOleFile)
 }
 
 
-static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& stOleFileList, GetNextOleDataFun funPtr)
+static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& stOleFileList)
 {
-
-
-
-
     int number_of_sub_items = 0;
     libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
     for (int i = 0; i < number_of_sub_items; ++i)
@@ -125,22 +121,53 @@ static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& st
                 stOleFileList.append(tmpSTOleFile);
 
                 libolecf_item_free(&sub_item, nullptr);
-                return;
+                continue;
             }
         }
         if (childItemCount > 0 /*&& outData.isEmpty()*/)
         {
-            getOle10NativeData(sub_item, stOleFileList, funPtr);
+            getOle10NativeData(sub_item, stOleFileList);
         }
         libolecf_item_free(&sub_item, nullptr);
     }
     return;
 }
 
-
-bool UtilityTool::GetOleFileData(const QByteArray &srcData, QList<ST_OleFile> &stOleFileList, GetNextOleDataFun funPtr)
+static void getOle10NativeData(libolecf_item_t* root_item ,ST_OleFile & stOleFile)
 {
-    stOleFileList.clear();
+    int number_of_sub_items = 0;
+    libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
+    for (int i = 0; i < number_of_sub_items; ++i)
+    {
+        libolecf_item_t* sub_item = NULL;
+        libolecf_item_get_sub_item(root_item, i, &sub_item, NULL);
+        int childItemCount = 0;
+        libolecf_item_get_number_of_sub_items(sub_item, &childItemCount, NULL);
+        size_t name_size = 0;
+        libolecf_item_get_utf8_name_size(sub_item, &name_size, NULL);
+        char* name = new char[name_size];
+        libolecf_item_get_utf8_name(sub_item, (uint8_t*)name, name_size, NULL);
+        QString itemName(name);
+        delete[] name;
+        if (itemName.endsWith("Ole10Native"))
+        {
+            QByteArray ole10 = readItemData(sub_item);
+            if (parseOle10Native(ole10, stOleFile))
+            {
+                libolecf_item_free(&sub_item, nullptr);
+            }
+        }
+        if (childItemCount > 0 /*&& outData.isEmpty()*/)
+        {
+            getOle10NativeData(sub_item, stOleFile);
+        }
+        libolecf_item_free(&sub_item, nullptr);
+    }
+    return;
+}
+
+bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_OleFile &stOleFile)
+{
     bool successful = false;
     QByteArray buffer = srcData;
     libbfio_handle_t* bfio_handle = nullptr;
@@ -188,8 +215,8 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, QList<ST_OleFile> &s
     libolecf_item_t* root_item = nullptr;
     if (libolecf_file_get_root_item(olecf2_file, &root_item, nullptr) == 1)
     {
-        getOle10NativeData(root_item, stOleFileList, funPtr);
-        if (!stOleFileList.isEmpty())
+        getOle10NativeData(root_item, stOleFile);
+        if (!stOleFile.fileData.isEmpty())
         {
             successful = true;
         }
