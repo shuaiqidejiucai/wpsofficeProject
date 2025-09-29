@@ -33,11 +33,26 @@ public:
 
     bool insertTextForTextRange(kfc::ks_stdptr<wpsapi::Range> range, int start, int length, const QString& qsTexts, bool after = true);
 
-    void extractPicture(GetNextImageDataFun imageFunPtr);
+    void extractPicture(GetNextOleDataFun imageFunPtr);
 
     //bool GetOleFileData(QList<ST_OleFile>& stOleList);
 
     void GetOleFileData(GetNextOleDataFun oleDataPtr);
+
+    bool delFile(long rangeStart, long rangeEnd);
+
+    //bool insertFile(long rangeStart, long rangeEnd, const QString& qsFileName);
+
+    //bool insertFile(long rangeStart, long rangeEnd, const QString& qsFileName);
+
+private:
+    void GetOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
+
+    void GetOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr,GetNextOleDataFun oldDataFunPtr,bool& isContinue);
+
+    void GetPictureForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
+
+    void GetPictureForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
 
 private:
     IKRpcClient * m_rpcClient;

@@ -26,7 +26,7 @@ static QByteArray readItemData(libolecf_item_t* item)
     return buf;
 }
 
-static bool parseOle10Native(const QByteArray& src, ST_OleFile & stOleFile)
+static bool parseOle10Native(const QByteArray& src, ST_VarantFile & stOleFile)
 {
     if (src.size() < 12) return false;
 
@@ -63,6 +63,7 @@ static bool parseOle10Native(const QByteArray& src, ST_OleFile & stOleFile)
         if (tryOff >= src.size()) break;
         int p = tryOff;
 
+
         quint32 filePrexLength = rdLE16(p);
 
         QByteArray label = readZ(p);
@@ -96,7 +97,7 @@ static bool parseOle10Native(const QByteArray& src, ST_OleFile & stOleFile)
 }
 
 
-static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& stOleFileList)
+static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_VarantFile>& stOleFileList)
 {
     int number_of_sub_items = 0;
     libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
@@ -115,7 +116,7 @@ static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& st
         if (itemName.endsWith("Ole10Native"))
         {
             QByteArray ole10 = readItemData(sub_item);
-            ST_OleFile tmpSTOleFile;
+            ST_VarantFile tmpSTOleFile;
             if (parseOle10Native(ole10, tmpSTOleFile))
             {
                 stOleFileList.append(tmpSTOleFile);
@@ -133,7 +134,7 @@ static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_OleFile>& st
     return;
 }
 
-static void getOle10NativeData(libolecf_item_t* root_item ,ST_OleFile & stOleFile)
+static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOleFile)
 {
     int number_of_sub_items = 0;
     libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
@@ -166,7 +167,7 @@ static void getOle10NativeData(libolecf_item_t* root_item ,ST_OleFile & stOleFil
     return;
 }
 
-bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_OleFile &stOleFile)
+bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOleFile)
 {
     bool successful = false;
     QByteArray buffer = srcData;

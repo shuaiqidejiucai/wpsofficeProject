@@ -4,29 +4,29 @@
 #include <QString>
 #include <QList>
 #include <QImage>
-struct ST_OleFile
+#include <QScopedPointer>
+
+enum EU_OperateType
 {
-    QString qsFileName;
-    QString qsTmpFilePath;
-    QString qsFilePath;
-    QByteArray fileData;
+    UnknownType,
+    DeleteType,
+    ReplaceType
 };
 
-enum EU_FileOperate
+struct ST_VarantFile
 {
-    Unknown_OP,
-    Delete_OP,
-    Replace_OP
+    QString qsFileName;//AS:temp.zip
+    QString qsTmpFilePath;//AS:C:/user/temp/temp.zip
+    QString qsFilePath;//AS:D:/test/temp.zip
+    QByteArray fileData;//AS:zip data
 };
-
-struct ST_FileOPerate
-{
-    EU_FileOperate euOperate = Unknown_OP;
-    QString fileAbsolutePath;
-};
-
-typedef bool(*GetNextOleDataFun)(ST_OleFile, ST_FileOPerate&);
-typedef bool(*GetNextImageDataFun)(QImage, ST_FileOPerate&);
+/*
+ * ST_VarantFile[in]
+ * ST_VarantFile&[out]
+ * EU_OperateType&[out]
+ */
+typedef bool(*GetNextOleDataFun)(ST_VarantFile, ST_VarantFile&, EU_OperateType&);
+//typedef bool(*GetNextImageDataFun)(ST_OleFile);
 class UtilityTool
 {
 public:
@@ -36,7 +36,7 @@ public:
      * bool[return]:返回是否成功
      */
     //out:srcData
-    static bool GetOleFileData(const QByteArray& srcData, ST_OleFile &stOleFile);
+    static bool GetOleFileData(const QByteArray& srcData, ST_VarantFile &stOleFile);
     /*
      * in[zipBytes]:zip数据流
      * out[outData]:传出ole文件的二进制流

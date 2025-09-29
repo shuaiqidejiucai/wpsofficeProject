@@ -12,6 +12,8 @@
 #include <libolecf.h>
 #include <libbfio_handle.h>
 #include <libbfio_memory_range.h>
+#include "officegeneralabilities.h"
+
 using namespace wpsapi;
 using namespace kfc;
 using namespace wpsapiex;
@@ -213,7 +215,7 @@ bool WpsComment::insertTextForTextRange(kfc::ks_stdptr<wpsapi::Range> range, int
     return true;
 }
 
-void WpsComment::extractPicture(GetNextImageDataFun imageFunPtr)
+void WpsComment::extractPicture(GetNextOleDataFun imageFunPtr)
 {
     if(!imageFunPtr)
     {
@@ -224,6 +226,7 @@ void WpsComment::extractPicture(GetNextImageDataFun imageFunPtr)
         return;
     }
 
+    bool isContinue = true;
     ks_stdptr<Shapes> shapesPtr;
     m_spDocument->get_Shapes(&shapesPtr);
     if(!shapesPtr)
@@ -249,37 +252,40 @@ void WpsComment::extractPicture(GetNextImageDataFun imageFunPtr)
         spShape->get_Type(&type);
         if(type == msoPicture || type == msoLinkedPicture)
         {
-            VARIANT missing;
-            VariantInit(&missing);
-            V_VT(&missing) = VT_ERROR;
-            V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
-            spShape->Select(&missing);
-            ks_stdptr<Selection> spSelection;
-            m_spApplication->get_Selection(&spSelection);
-            if(!spSelection)
+            GetPictureForShape(shapesPtr, spShape, imageFunPtr, isContinue);
+            if(!isContinue)
             {
-                continue;
+                return;
             }
-            spSelection->CopyAsPicture();
-            QImage image = qApp->clipboard()->image();
-            ST_FileOPerate fileOperate;
-            bool isNeedContinue = imageFunPtr(image, fileOperate);
-            if(isNeedDel)
-            {
-                // VARIANT missing;
-                // VariantInit(&missing);
-                // V_VT(&missing) = VT_ERROR;
-                // V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
-                // long prop;
-                HRESULT hr = spShape->Delete();
+        }
+    }
 
-                if(SUCCEEDED(hr))
-                {
-                    i--;
-                }
-                //spSelection->Delete(&missing, &missing, &prop);
-            }
-            if(!isNeedContinue)
+    if(!isContinue)
+    {
+        return;
+    }
+    ks_stdptr<InlineShapes> inlineShapes;
+    m_spDocument->get_InlineShapes(&inlineShapes);
+    if(!inlineShapes)
+    {
+        return;
+    }
+    long count = 0;
+    inlineShapes->get_Count(&count);
+    for(int i = 1; i <= count; ++i)
+    {
+        ks_stdptr<InlineShape> shapePtr;
+        inlineShapes->Item(i, &shapePtr);
+        if(!shapePtr)
+        {
+            continue;
+        }
+        WdInlineShapeType inlineShapeType;
+        shapePtr->get_Type(&inlineShapeType);
+        if(inlineShapeType == wdInlineShapePicture)
+        {
+            GetPictureForInlineShape(inlineShapes, inlineShapeType, imageFunPtr, isContinue);
+            if(!isContinue)
             {
                 return;
             }
@@ -341,11 +347,50 @@ void WpsComment::extractPicture(GetNextImageDataFun imageFunPtr)
 
 void WpsComment::GetOleFileData(GetNextOleDataFun oleDataPtr)
 {
+    if(!oleDataPtr)
+    {
+        return;
+    }
     if(!m_spDocument)
     {
         return;
     }
-    if(!oleDataPtr)
+
+    bool isContinue = true;
+    ks_stdptr<Shapes> shapesPtr;
+    m_spDocument->get_Shapes(&shapesPtr);
+    if(!shapesPtr)
+    {
+        return;
+    }
+    long shapeCount = 0;
+    shapesPtr->get_Count(&shapeCount);
+    for(int i = 1; i <= shapeCount; ++i)
+    {
+        VARIANT shapeIndex;
+        VariantInit(&shapeIndex);
+        V_VT(&shapeIndex) = VT_I4;
+        V_I4(&shapeIndex) = i;
+
+        ks_stdptr<Shape> spShape;
+        shapesPtr->Item(&shapeIndex, &spShape);
+        if(!spShape)
+        {
+            continue;
+        }
+        MsoShapeType type;
+        spShape->get_Type(&type);
+        if(type == msoEmbeddedOLEObject || type == msoLinkedOLEObject)
+        {
+            GetOldFileDataForShape(shapesPtr, spShape, oleDataPtr, isContinue);
+            if(!isContinue)
+            {
+                return;
+            }
+        }
+    }
+
+    if(!isContinue)
     {
         return;
     }
@@ -368,50 +413,428 @@ void WpsComment::GetOleFileData(GetNextOleDataFun oleDataPtr)
         WdInlineShapeType inlineShapeType;
         shapePtr->get_Type(&inlineShapeType);
         if(inlineShapeType == wdInlineShapeEmbeddedOLEObject
-            || inlineShapeType == wdInlineShapeEmbeddedOLEObject
-            || inlineShapeType == wdInlineShapeOLEControlObject)
+            || inlineShapeType == wdInlineShapeLinkedOLEObject)
         {
-            shapePtr->Select();
-            ks_stdptr<Selection> spSelection;
-            m_spApplication->get_Selection(&spSelection);
-            if(!spSelection)
+            GetOldFileDataForInlineShape(inlineShapes, inlineShapeType, oleDataPtr, isContinue);
+            if(!isContinue)
             {
-                continue;
-            }
-            spSelection->Copy();
-            const QMimeData *  mdata = qApp->clipboard()->mimeData();
-            if(mdata)
-            {
-                QByteArray data = mdata->data(MimeDataKey);
-                QByteArray srcData;
-                if(UtilityTool::findOleDataFromZipMemory(data, srcData))
-                {
-                    if(srcData.isEmpty())
-                    {
-                        continue;
-                    }
-                    ST_OleFile stOleFile;
-                    UtilityTool::GetOleFileData(srcData, stOleFile);
-                    bool isNeedDel = false;
-                    bool isContinue = oleDataPtr(stOleFile, isNeedDel);
-                    if(isNeedDel)
-                    {
-                        HRESULT hr = shapePtr->Delete();
-                        if(SUCCEEDED(hr))
-                        {
-                            i--;
-                        }
-                    }
-                    if(!isContinue)
-                    {
-                        return;
-                    }
-                }
+                return;
             }
         }
     }
-    return;
 }
+
+bool WpsComment::delFile(long rangeStart, long rangeEnd)
+{
+    ks_stdptr<Selection> spSelection;
+    m_spApplication->get_Selection(&spSelection);
+    if(!spSelection)
+    {
+        return false;
+    }
+    HRESULT hr = spSelection->SetRange(rangeStart, rangeEnd);
+    if(!SUCCEEDED(hr))
+    {
+        return false;
+    }
+    VARIANT missing;
+    VariantInit(&missing);
+    V_VT(&missing) = VT_ERROR;
+    V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+    long prop = 0;
+    spSelection->Delete(&missing, &missing, &prop);
+    if(prop != 0)
+    {
+        return true;
+    }
+    return false;
+}
+
+void WpsComment::GetOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool &isContinue)
+{
+    if(!oldDataFunPtr || !shapePtr || !shapesPtr)
+    {
+        return;
+    }
+    VARIANT missing;
+    VariantInit(&missing);
+    V_VT(&missing) = VT_ERROR;
+    V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+
+    shapePtr->Select(&missing);
+    ks_stdptr<Selection> spSelection;
+    m_spApplication->get_Selection(&spSelection);
+    if(!spSelection)
+    {
+        return;
+    }
+    ks_stdptr<Range> selectionRange;
+    spSelection->get_Range(&selectionRange);
+    spSelection->Copy();
+    const QMimeData *  mdata = qApp->clipboard()->mimeData();
+    if(mdata)
+    {
+        QByteArray data = mdata->data(MimeDataKey);
+        QByteArray srcData;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        {
+            if(srcData.isEmpty())
+            {
+                return;
+            }
+            ST_VarantFile stOleFile;
+            UtilityTool::GetOleFileData(srcData, stOleFile);
+            EU_OperateType operaTye;
+            ST_VarantFile outFileInfo;
+            isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
+            if(operaTye == DeleteType)
+            {
+                shapePtr->Delete();
+                //日至
+            }
+            else if(operaTye == ReplaceType)
+            {
+                float left = 0.0f;
+                float top = 0.0f;
+                float width = 0.0f;
+                float height = 0.0f;
+                shapePtr->get_Left(&left);
+                shapePtr->get_Top(&top);
+                shapePtr->get_Width(&width);
+                shapePtr->get_Height(&height);
+                ks_stdptr<Range> anchorRangePtr;
+                shapePtr->get_Anchor(&anchorRangePtr);
+
+                VARIANT unitTypeVar;
+                V_VT(&unitTypeVar) = VT_I4;
+                V_I4(&unitTypeVar) = wdCollapseStart;
+                anchorRangePtr->Collapse(&unitTypeVar);
+
+                VARIANT anchorVar;
+                V_VT(&anchorVar) = VT_DISPATCH;
+                V_DISPATCH(&anchorVar) = anchorRangePtr;
+
+                HRESULT hr = shapePtr->Delete();
+                if(SUCCEEDED(hr))
+                {
+                    VARIANT leftVar;
+                    VariantInit(&leftVar);
+                    V_R4(&leftVar) = left;
+
+                    VARIANT topVar;
+                    VariantInit(&topVar);
+                    V_R4(&topVar) = top;
+
+                    VARIANT widthVar;
+                    VariantInit(&widthVar);
+                    V_R4(&widthVar) = width;
+
+                    VARIANT heightVar;
+                    VariantInit(&heightVar);
+                    V_R4(&heightVar) = height;
+
+
+                    ks_bstr fileNameStr(outFileInfo.qsFilePath.utf16());
+                    VARIANT fileNameVar;
+                    V_VT(&fileNameVar) = VT_BSTR;
+                    V_BSTR(&fileNameVar) = fileNameStr;
+                    ks_stdptr<Shape> outShapePtr;
+                    shapesPtr->AddOLEObject(&missing,&fileNameVar,&missing
+                                            ,&missing,&missing,&missing,&missing
+                                            ,&leftVar,&topVar,&widthVar,&heightVar
+                                            ,&anchorVar, &outShapePtr);
+                    //日至
+                }
+            }
+            else
+            {
+
+            }
+            if(!isContinue)
+            {
+                return;
+            }
+        }
+    }
+}
+
+void WpsComment::GetOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool &isContinue)
+{
+    if(!oldDataFunPtr || !shapePtr || !shapesPtr)
+    {
+        return;
+    }
+    shapePtr->Select();
+    ks_stdptr<Selection> spSelection;
+    m_spApplication->get_Selection(&spSelection);
+    if(!spSelection)
+    {
+        return;
+    }
+    spSelection->Copy();
+    const QMimeData *  mdata = qApp->clipboard()->mimeData();
+    if(mdata)
+    {
+        QByteArray data = mdata->data(MimeDataKey);
+        QByteArray srcData;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        {
+            if(srcData.isEmpty())
+            {
+                return;
+            }
+            ST_VarantFile stOleFile;
+            UtilityTool::GetOleFileData(srcData, stOleFile);
+            EU_OperateType operaTye;
+            ST_VarantFile outFileInfo;
+            isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
+            if(operaTye == DeleteType)
+            {
+                shapePtr->Delete();
+                //日至
+            }
+            else if(operaTye == ReplaceType)
+            {
+                shapePtr->Delete();
+                ks_stdptr<Range> oleFileRange;
+                shapePtr->get_Range(&oleFileRange);
+                if(oleFileRange)
+                {
+
+                    ks_bstr fileNameStr(outFileInfo.qsFilePath.utf16());
+                    VARIANT fileNameVar;
+                    V_VT(&fileNameVar) = VT_BSTR;
+                    V_BSTR(&fileNameVar) = fileNameStr;
+
+                    VARIANT missing;
+                    VariantInit(&missing);
+                    V_VT(&missing) = VT_ERROR;
+                    V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+
+
+                    VARIANT unitTypeVar;
+                    V_VT(&unitTypeVar) = VT_I4;
+                    V_I4(&unitTypeVar) = wdCollapseStart;
+
+                    oleFileRange->Collapse(&unitTypeVar);
+
+                    VARIANT rangeVar;
+                    V_VT(&rangeVar) = VT_DISPATCH;
+                    V_DISPATCH(&rangeVar) = oleFileRange;
+
+                    ks_stdptr<InlineShape> inlineShapePtr;
+                    shapesPtr->AddOLEObject(&missing, &fileNameVar, &missing
+                                               ,&missing,&missing,&missing
+                                               ,&missing, &rangeVar, &inlineShapePtr);
+                    if(inlineShapePtr)
+                    {
+                        qDebug()<<"sucessful";
+                    }
+                }
+            }
+            else
+            {
+
+            }
+        }
+    }
+}
+
+void WpsComment::GetPictureForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue)
+{
+    if(!imageDataFunPtr || !shapePtr || !shapesPtr)
+    {
+        return;
+    }
+
+    shapePtr->Select();
+    ks_stdptr<Selection> spSelection;
+    m_spApplication->get_Selection(&spSelection);
+    if(!spSelection)
+    {
+        return;
+    }
+    spSelection->CopyAsPicture();
+    QImage image = qApp->clipboard()->image();
+
+    QByteArray encoded = QByteArray::fromRawData((char*)image.bits(), image.sizeInBytes());
+    QBuffer buf(&encoded);
+    buf.open(QIODevice::WriteOnly);
+    image.save(&buf, "JPG");
+
+    ST_VarantFile varantFile;
+    varantFile.fileData = buf.data();
+
+    EU_OperateType euOperateType;
+    ST_VarantFile outFileInfo;
+    isContinue = imageDataFunPtr(varantFile,outFileInfo ,euOperateType);
+    if(euOperateType == DeleteType)
+    {
+        shapePtr->Delete();
+        //日至
+    }
+    else if(euOperateType == ReplaceType)
+    {
+        ks_stdptr<Range> inlineShapeRange;
+        shapePtr->get_Range(&inlineShapeRange);
+        if(!inlineShapeRange)
+        {
+            return;
+        }
+        VARIANT unitTypeVar;
+        V_VT(&unitTypeVar) = VT_I4;
+        V_I4(&unitTypeVar) = wdCollapseStart;
+
+        inlineShapeRange->Collapse(&unitTypeVar);
+        HRESULT hr = shapePtr->Delete();
+
+        VARIANT anchorVar;
+        V_VT(&anchorVar) = VT_DISPATCH;
+        V_DISPATCH(&anchorVar) = inlineShapeRange;
+
+        if(SUCCEEDED(hr))
+        {
+            VARIANT missing;
+            VariantInit(&missing);
+            V_VT(&missing) = VT_ERROR;
+            V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+
+            ks_bstr fileNameBstr(outFileInfo.qsFilePath.utf16());
+            ks_stdptr<InlineShape> outShape;
+            shapesPtr->AddPicture(fileNameBstr, &missing, &missing, &anchorVar, &outShape);
+        }
+    }
+    else
+    {
+
+    }
+}
+
+void WpsComment::GetPictureForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue)
+{
+    if(!imageDataFunPtr || !shapePtr || !shapesPtr)
+    {
+        return;
+    }
+    VARIANT missing;
+    VariantInit(&missing);
+    V_VT(&missing) = VT_ERROR;
+    V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+    shapePtr->Select(&missing);
+    ks_stdptr<Selection> spSelection;
+    m_spApplication->get_Selection(&spSelection);
+    if(!spSelection)
+    {
+        return;
+    }
+    ks_stdptr<Range> selectionRange;
+    spSelection->get_Range(&selectionRange);
+    spSelection->CopyAsPicture();
+    QImage image = qApp->clipboard()->image();
+
+    QByteArray encoded = QByteArray::fromRawData((char*)image.bits(), image.sizeInBytes());
+    QBuffer buf(&encoded);
+    buf.open(QIODevice::WriteOnly);
+    image.save(&buf, "JPG");
+
+    ST_VarantFile varantFile;
+    varantFile.fileData = buf.data();
+
+    EU_OperateType euOperateType;
+    ST_VarantFile outFileInfo;
+    isContinue = imageDataFunPtr(varantFile,outFileInfo ,euOperateType);
+    if(euOperateType == DeleteType)
+    {
+        shapePtr->Delete();
+        //日至
+    }
+    else if(euOperateType == ReplaceType)
+    {
+        float left = 0.0f;
+        float top = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
+        shapePtr->get_Left(&left);
+        shapePtr->get_Top(&top);
+        shapePtr->get_Width(&width);
+        shapePtr->get_Height(&height);
+        ks_stdptr<Range> anchorRangePtr;
+        shapePtr->get_Anchor(&anchorRangePtr);
+
+        VARIANT unitTypeVar;
+        V_VT(&unitTypeVar) = VT_I4;
+        V_I4(&unitTypeVar) = wdCollapseStart;
+
+        anchorRangePtr->Collapse(&unitTypeVar);
+
+        VARIANT anchorVar;
+        V_VT(&anchorVar) = VT_DISPATCH;
+        V_DISPATCH(&anchorVar) = anchorRangePtr;
+        HRESULT hr = shapePtr->Delete();
+        if(SUCCEEDED(hr))
+        {
+            VARIANT leftVar;
+            VariantInit(&leftVar);
+            V_R4(&leftVar) = left;
+
+            VARIANT topVar;
+            VariantInit(&topVar);
+            V_R4(&topVar) = top;
+
+            VARIANT widthVar;
+            VariantInit(&widthVar);
+            V_R4(&widthVar) = width;
+
+            VARIANT heightVar;
+            VariantInit(&heightVar);
+            V_R4(&heightVar) = height;
+
+
+            ks_stdptr<Shape> outShape;
+            ks_bstr filePathBstr (outFileInfo.qsFilePath.utf16());
+            shapesPtr->AddPicture(filePathBstr, &missing, &missing
+                                  ,&leftVar, &topVar, &widthVar,&heightVar
+                                  ,&anchorVar,&outShape);
+            //日至
+        }
+    }
+    else
+    {
+        qDebug()<<"Unknown Type";
+    }
+}
+
+
+
+
+// bool WpsComment::insertFile(long rangeStart, long rangeEnd, const QString &qsFileName)
+// {
+//     ks_stdptr<Selection> spSelection;
+//     m_spApplication->get_Selection(&spSelection);
+//     if(!spSelection)
+//     {
+//         return false;
+//     }
+//     HRESULT hr = spSelection->SetRange(rangeStart, rangeEnd);
+//     if(!SUCCEEDED(hr))
+//     {
+//         return false;
+//     }
+//     spSelection->Paste();
+//     ks_stdptr<Range> range;
+//     spSelection->get_Range(&range);
+//     if(!range)
+//     {
+//         return false;
+//     }
+//     ks_stdptr<InlineShapes> inlineShapesPtr;
+//     range->get_InlineShapes(&inlineShapesPtr);
+//     if(!inlineShapesPtr)
+//     {
+//         return false;
+//     }
+//     inlineShapesPtr->AddPicture()
+// }
 
 QList<kfc::ks_stdptr<Range> > WpsComment::GetTextRange()
 {

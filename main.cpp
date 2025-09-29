@@ -26,7 +26,8 @@ int main(int argc, char *argv[])
     wpscom.initWpsRpcClient();
     wpscom.initWpsApplication();
     wpscom.openWPSDoc("/mnt/hgfs/vmshare/9.doc");
-    //wpscom.saveWPSDoc();
+    //wpscom.testChangeImage();
+    wpscom.saveWPSDoc();
     wpscom.closeApp();
     return a.exec();
 }

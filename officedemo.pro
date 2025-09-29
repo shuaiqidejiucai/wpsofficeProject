@@ -38,6 +38,7 @@ SOURCES += \
     etcomment.cpp \
     main.cpp \
     mainwindow.cpp \
+    officegeneralabilities.cpp \
     utilitytool.cpp \
     wppcomment.cpp \
     wpscomment.cpp
@@ -45,6 +46,7 @@ SOURCES += \
 HEADERS += \
     etcomment.h \
     mainwindow.h \
+    officegeneralabilities.h \
     utilitytool.h \
     wppcomment.h \
     wpscomment.h
