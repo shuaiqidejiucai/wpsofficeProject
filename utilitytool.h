@@ -8,7 +8,7 @@
 
 enum EU_OperateType
 {
-    UnknownType,
+    NoOperateType,
     DeleteType,
     ReplaceType
 };
