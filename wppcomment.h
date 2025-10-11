@@ -4,7 +4,7 @@
 #include <QObject>
 #include "wppapi.h"
 #include "kfc/comsptr.h"
-#include "wpsapiex.h"
+#include "officegeneralabilities.h"
 
 class WppComment : public QObject
 {
@@ -32,11 +32,16 @@ public:
 
     bool insertTextForTextRange(kfc::ks_stdptr<wppapi::TextRange> range, int start, int length, const QString& qsTexts, bool after = true);
 
-    bool insertAttachment();
+    void getOleFileData(GetNextOleDataFun oleDataPtr);
 
-    bool extractAttachments();
+    void extractPicture(GetNextOleDataFun imageFunPtr);
+private:
+    void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);
 
-    bool extractPicture();
+    bool getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
+
+    bool getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
+
 private:
     IKRpcClient * m_rpcClient;
     kfc::ks_stdptr<wppapi::_Application> m_spApplication;

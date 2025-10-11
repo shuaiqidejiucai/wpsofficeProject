@@ -2,6 +2,10 @@
 #include <QDebug>
 #include "variant.h"
 #include "wpsapiex.h"
+#include <QApplication>
+#include <QClipboard>
+#include <QBuffer>
+#include <QMimeData>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -153,164 +157,271 @@ bool WppComment::insertTextForTextRange(kfc::ks_stdptr<wppapi::TextRange> range,
     return false;
 }
 
-bool WppComment::insertAttachment()
+void WppComment::getOleFileData(GetNextOleDataFun oleDataPtr)
 {
-    return false;
+    extractFile(OleFileType, oleDataPtr);
 }
 
-bool WppComment::extractAttachments()
+void WppComment::extractPicture(GetNextOleDataFun imageFunPtr)
 {
-    if(!m_spPresentation)
+    extractFile(ImageType, imageFunPtr);
+}
+
+void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
+{
+    if(!m_spPresentation || !fileFunPtr)
     {
-        return false;
+        return;
     }
     ks_stdptr<Slides> slidesPtr;
     m_spPresentation->get_Slides(&slidesPtr);
     if(!slidesPtr)
     {
-        return false;
+        return;
     }
 
+    QList<ks_stdptr<Shape>> shapeList;
+    ks_stdptr<Shapes> belongShapesPtr;
     long count = 0;
     slidesPtr->get_Count(&count);
-    for (long i = 1; i <= count; ++i)
+    long slidRangeCount = 0;
+    slidesPtr->get_Count(&slidRangeCount);
+    for(long i = 1; i <= slidRangeCount; ++i)
     {
-        VARIANT v;
-        VariantInit(&v);
-        V_VT(&v) = VT_I4;
-        V_I4(&v) = i;
+        VARIANT rangeIndex;
+        VariantInit(&rangeIndex);
+        V_VT(&rangeIndex) = VT_I4;
+        V_I4(&rangeIndex) = i;
 
-        long slidRangeCount = 0;
-        slidesPtr->get_Count(&slidRangeCount);
-        for(long j = 1; j <= slidRangeCount; ++j)
+        ks_stdptr<SlideRange> range;
+        slidesPtr->Range(rangeIndex, &range);
+        if(!range)
         {
-            VARIANT rangeIndex;
-            VariantInit(&rangeIndex);
-            V_VT(&rangeIndex) = VT_I4;
-            V_I4(&rangeIndex) = i;
+            continue;
+        }
+        ks_stdptr<Shapes> shapesPtr;
+        range->get_Shapes(&shapesPtr);
+        if(!shapesPtr)
+        {
+            continue;
+        }
+        belongShapesPtr = shapesPtr;
+        int shapeCount = 0;
+        shapesPtr->get_Count(&shapeCount);
+        for(int j = 1; j <= shapeCount; ++j)
+        {
+            VARIANT shapeIndex;
+            VariantInit(&shapeIndex);
+            V_VT(&shapeIndex) = VT_I4;
+            V_I4(&shapeIndex) = j;
 
-            ks_stdptr<SlideRange> range;
-            slidesPtr->Range(rangeIndex, &range);
-            if(!range)
+            ks_stdptr<Shape> shapePtr;
+            shapesPtr->Item(shapeIndex, &shapePtr);
+            if(shapePtr)
             {
-                continue;
-            }
-            ks_stdptr<Shapes> shapesPtr;
-            range->get_Shapes(&shapesPtr);
-            if(!shapesPtr)
-            {
-                continue;
-            }
-            int shapeCount = 0;
-            shapesPtr->get_Count(&shapeCount);
-            for(int q = 1; q <= shapeCount; ++q)
-            {
-                VARIANT shapeIndex;
-                VariantInit(&shapeIndex);
-                V_VT(&shapeIndex) = VT_I4;
-                V_I4(&shapeIndex) = q;
-                ks_stdptr<Shape> shapePtr;
-                shapesPtr->Item(shapeIndex, &shapePtr);
-                if(!shapePtr)
+                MsoShapeType type;
+                shapePtr->get_Type(&type);
+                if(fileType == ImageType && (type == msoPicture || type == msoLinkedPicture))
                 {
-                    continue;
+                    shapeList.append(shapePtr);
                 }
-                //shapePtr->get_OLEFormat()
-                MsoShapeType shapeType;
-                shapePtr->get_Type(&shapeType);
-                if(shapeType == msoEmbeddedOLEObject)
+                else if(fileType == OleFileType && (type == msoEmbeddedOLEObject || type == msoLinkedOLEObject))
                 {
-                    ks_stdptr<OLEFormat> oleFormatPtr;
-                    //oleFormatPtr->
-                    shapePtr->get_OLEFormat(&oleFormatPtr);
-                    IDispatch* obj = nullptr;
-                    oleFormatPtr->get_Object(&obj);
+                    shapeList.append(shapePtr);
                 }
-                else if(shapeType == msoLinkedOLEObject)
+                else
                 {
-
-                }
-                else if(shapeType == msoPicture)
-                {
-
-                }
-                else if(shapeType == msoMedia)
-                {
-
+                    qDebug()<<"other type";
                 }
             }
         }
     }
-    return false;
+
+    bool isContinue = false;
+    for(int i = 0; i < shapeList.count(); ++i)
+    {
+        ks_stdptr<Shape> shapePtr = shapeList.at(i);
+        if(fileType == ImageType)
+        {
+            WppComment::getPictureForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
+        }
+        else if(fileType == OleFileType)
+        {
+            WppComment::getOldFileDataForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
+        }
+        else
+        {
+            qDebug()<<"UnKnown Type";
+        }
+        if(!isContinue)
+        {
+            return;
+        }
+    }
+    return;
 }
 
-bool WppComment::extractPicture()
+bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue)
 {
-    if(!m_spPresentation)
+    bool result = false;
+    if(!imageDataFunPtr || !shapePtr || !shapesPtr)
     {
-        return false;
+        return result;
     }
-    ks_stdptr<Slides> slidesPtr;
-    m_spPresentation->get_Slides(&slidesPtr);
-    if(!slidesPtr)
+    shapePtr->Copy();
+
+    QImage image = qApp->clipboard()->image();
+
+    QByteArray encoded = QByteArray::fromRawData((char*)image.bits(), image.sizeInBytes());
+    QBuffer buf(&encoded);
+    buf.open(QIODevice::WriteOnly);
+    image.save(&buf, "JPG");
+
+    ST_VarantFile varantFile;
+    varantFile.fileData = buf.data();
+
+    EU_OperateType euOperateType;
+    ST_VarantFile outFileInfo;
+    isContinue = imageDataFunPtr(varantFile,outFileInfo ,euOperateType);
+    if(euOperateType == DeleteType)
     {
-        return false;
+        HRESULT hr = shapePtr->Delete();
+        result = OFFICE_HRESULT(hr, "delete");
+        //日至
     }
-
-    long count = 0;
-    slidesPtr->get_Count(&count);
-    for (long i = 1; i <= count; ++i)
+    else if(euOperateType == ReplaceType)
     {
-        VARIANT v;
-        VariantInit(&v);
-        V_VT(&v) = VT_I4;
-        V_I4(&v) = i;
+        float left = 0.0f;
+        float top = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
+        shapePtr->get_Left(&left);
+        shapePtr->get_Top(&top);
+        shapePtr->get_Width(&width);
+        shapePtr->get_Height(&height);
 
-        long slidRangeCount = 0;
-        slidesPtr->get_Count(&slidRangeCount);
-        for(long j = 1; j <= slidRangeCount; ++j)
+        HRESULT hr = shapePtr->Delete();
+        result = OFFICE_HRESULT(hr,"delete");
+        if(result)
         {
-            VARIANT rangeIndex;
-            VariantInit(&rangeIndex);
-            V_VT(&rangeIndex) = VT_I4;
-            V_I4(&rangeIndex) = i;
+            VARIANT leftVar;
+            VariantInit(&leftVar);
+            V_R4(&leftVar) = left;
 
-            ks_stdptr<SlideRange> range;
-            slidesPtr->Range(rangeIndex, &range);
-            if(!range)
+            VARIANT topVar;
+            VariantInit(&topVar);
+            V_R4(&topVar) = top;
+
+            VARIANT widthVar;
+            VariantInit(&widthVar);
+            V_R4(&widthVar) = width;
+
+            VARIANT heightVar;
+            VariantInit(&heightVar);
+            V_R4(&heightVar) = height;
+
+
+            ks_stdptr<Shape> outShape;
+            ks_bstr filePathBstr (outFileInfo.qsFilePath.utf16());
+            HRESULT AddPictureHr = shapesPtr->AddPicture(filePathBstr, msoFalse, msoTrue, left, top, width, height, &outShape);
+            result = OFFICE_HRESULT(AddPictureHr, QString("AddPicture"));
+            //日至
+        }
+    }
+    else
+    {
+        qDebug()<<"Unknown Type";
+    }
+    return result;
+}
+
+bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool &isContinue)
+{
+    bool result = false;
+    if(!oldDataFunPtr || !shapePtr || !shapesPtr)
+    {
+        return result;
+    }
+
+    shapePtr->Copy();
+    const QMimeData *  mdata = qApp->clipboard()->mimeData();
+    if(mdata)
+    {
+        QByteArray data = mdata->data(MimeDataKey);
+        QByteArray srcData;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        {
+            if(srcData.isEmpty())
             {
-                continue;
+                return result;
             }
-            ks_stdptr<Shapes> shapesPtr;
-            range->get_Shapes(&shapesPtr);
-            if(!shapesPtr)
+            ST_VarantFile stOleFile;
+            UtilityTool::GetOleFileData(srcData, stOleFile);
+            EU_OperateType operaTye;
+            ST_VarantFile outFileInfo;
+            isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
+            if(operaTye == DeleteType)
             {
-                continue;
+                HRESULT delHr = shapePtr->Delete();
+                result = OFFICE_HRESULT(delHr, "delete");
+                //日至
             }
-            int shapeCount = 0;
-            shapesPtr->get_Count(&shapeCount);
-            for(int q = 1; q <= shapeCount + 1; ++q)
+            else if(operaTye == ReplaceType)
             {
-                VARIANT shapeIndex;
-                VariantInit(&shapeIndex);
-                V_VT(&shapeIndex) = VT_I4;
-                V_I4(&shapeIndex) = q;
-                ks_stdptr<Shape> shapePtr;
-                shapesPtr->Item(shapeIndex, &shapePtr);
-                if(!shapePtr)
+                float left = 0.0f;
+                float top = 0.0f;
+                float width = 0.0f;
+                float height = 0.0f;
+                shapePtr->get_Left(&left);
+                shapePtr->get_Top(&top);
+                shapePtr->get_Width(&width);
+                shapePtr->get_Height(&height);
+
+                HRESULT hr = shapePtr->Delete();
+                result = OFFICE_HRESULT(hr, "delete");
+                if(result)
                 {
-                    continue;
+                    VARIANT leftVar;
+                    VariantInit(&leftVar);
+                    V_R4(&leftVar) = left;
+
+                    VARIANT topVar;
+                    VariantInit(&topVar);
+                    V_R4(&topVar) = top;
+
+                    VARIANT widthVar;
+                    VariantInit(&widthVar);
+                    V_R4(&widthVar) = width;
+
+                    VARIANT heightVar;
+                    VariantInit(&heightVar);
+                    V_R4(&heightVar) = height;
+
+
+                    ks_bstr fileNameStr(outFileInfo.qsFilePath.utf16());
+                    VARIANT fileNameVar;
+                    V_VT(&fileNameVar) = VT_BSTR;
+                    V_BSTR(&fileNameVar) = fileNameStr;
+                    ks_stdptr<Shape> outShapePtr;
+
+                    VARIANT missing;
+                    VariantInit(&missing);
+                    V_VT(&missing) = VT_ERROR;
+                    V_ERROR(&missing) = DISP_E_PARAMNOTFOUND;
+
+                    ks_bstr missBstr;
+                    HRESULT addOleHr = shapesPtr->AddOLEObject(left, top, width, height, missBstr, fileNameStr, msoFalse, missBstr, 0, missBstr, msoFalse, &outShapePtr);
+                    result = OFFICE_HRESULT(addOleHr, "AddOLEObject");
+                    //日至
                 }
-                ks_stdptr<PictureFormat> picturePtr;
-                shapePtr->get_PictureFormat(&picturePtr);
-                if(!picturePtr)
-                {
-                    continue;
-                }
+            }
+            else
+            {
+                qDebug()<<"No Operate Type";
             }
         }
     }
-    return false;
+    return result;
 }
 
 QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRange()

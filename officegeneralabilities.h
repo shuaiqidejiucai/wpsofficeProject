@@ -28,24 +28,6 @@ class OfficeGeneralAbilities
 public:
     OfficeGeneralAbilities();
 
-    static void extractFile(kfc::ks_stdptr<wpsapi::_Application> spApplication, kfc::ks_stdptr<wpsapi::_Document> documentPtr, EU_FileType fileType, GetNextOleDataFun fileFunPtr);
-
-    static void GetOldFileDataForShapes(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
-
-    static void GetOldFileDataForInlineShapes(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr,GetNextOleDataFun oldDataFunPtr,bool& isContinue);
-
-    static void GetPictureForInlineShapes(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, GetNextOleDataFun imageDataFunPtr, bool& isContinue);
-
-    static void GetPictureForShapes(kfc::ks_stdptr<wpsapi::_Application> spApplication, kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue);
-private:
-    static bool GetOldFileDataForShape(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
-
-    static bool GetOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr,GetNextOleDataFun oldDataFunPtr,bool& isContinue);
-
-    static bool GetPictureForInlineShape(kfc::ks_stdptr<wpsapi::_Application> spApplication,kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
-
-    static bool GetPictureForShape(kfc::ks_stdptr<wpsapi::_Application> spApplication, kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
-
 };
 
 #endif // OFFICEGENERALABILITIES_H

@@ -6,6 +6,7 @@
 #include "kfc/comsptr.h"
 #include "wpsapiex.h"
 #include "utilitytool.h"
+#include "officegeneralabilities.h"
 
 class WpsComment : public QObject
 {
@@ -35,13 +36,29 @@ public:
 
     void extractPicture(GetNextOleDataFun imageFunPtr);
 
-    void GetOleFileData(GetNextOleDataFun oleDataPtr);
+    void getOleFileData(GetNextOleDataFun oleDataPtr);
 
     bool delFile(long rangeStart, long rangeEnd);
 
-    //bool insertFile(long rangeStart, long rangeEnd, const QString& qsFileName);
+private:
+    void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);
 
-    //bool insertFile(long rangeStart, long rangeEnd, const QString& qsFileName);
+    void getOldFileDataForShapes(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
+
+    void getOldFileDataForInlineShapes(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr,GetNextOleDataFun oldDataFunPtr,bool& isContinue);
+
+    void getPictureForInlineShapes(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, GetNextOleDataFun imageDataFunPtr, bool& isContinue);
+
+    void getPictureForShapes(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue);
+
+    bool getOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
+
+    bool getOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr,GetNextOleDataFun oldDataFunPtr,bool& isContinue);
+
+    bool getPictureForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> shapesPtr, kfc::ks_stdptr<wpsapi::InlineShape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
+
+    bool getPictureForShape( kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kfc::ks_stdptr<wpsapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
+
 
 private:
     IKRpcClient * m_rpcClient;
