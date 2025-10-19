@@ -24,9 +24,17 @@ public:
 
     bool saveWPPDoc();
 
+    QList<kfc::ks_stdptr<wppapi::Shape>> GetShapeGroupList(kfc::ks_stdptr<wppapi::Shape> shapePtr, EU_FileType fileterFileType = AllFileType);
+
     QStringList GetWPPText();
 
     QList<kfc::ks_stdptr<wppapi::TextRange>> GetTextRange();
+
+    QList<kfc::ks_stdptr<wppapi::TextRange>> GetTextRangeForShapes(kfc::ks_stdptr<wppapi::Shapes> shapesPtr);
+
+    long getPageCount();
+
+    QList<kfc::ks_stdptr<wppapi::TextRange>> getRearks(long pageIndex);
 
     void replaceTextForWPPDoc(const QString& findText, const QString& replaceText);
 

@@ -40,6 +40,7 @@ public:
 
     bool delFile(long rangeStart, long rangeEnd);
 
+    QList<kfc::ks_stdptr<wpsapi::Shape> > GetShapeGroupList(kfc::ks_stdptr<wpsapi::Shape> shapePtr, EU_FileType fileterFileType);
 private:
     void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);
 

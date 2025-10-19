@@ -6,6 +6,7 @@
 #include <QClipboard>
 #include <QBuffer>
 #include <QMimeData>
+#include <QStack>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -102,6 +103,7 @@ QStringList WppComment::GetWPPText()
             BSTR  textPtr4;
             textRangePtr->get_Text(&textPtr4);
             QString qsStr = GetBSTRText(textPtr4);
+            qDebug()<<"text:"<<qsStr;
             if(!qsStr.isEmpty())
             {
                 qsStrList.append(qsStr);
@@ -109,6 +111,106 @@ QStringList WppComment::GetWPPText()
         }
     }
     return qsStrList;
+}
+
+long WppComment::getPageCount()
+{
+    if(!m_spPresentation)
+    {
+        return 0;
+    }
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return 0;
+    }
+
+    long slideCount = 0;
+    slidesPtr->get_Count(&slideCount);
+    return slideCount;
+}
+
+QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRangeForShapes(kfc::ks_stdptr<wppapi::Shapes> shapesPtr)
+{
+    QList<ks_stdptr<TextRange>> textRangeList;
+    if(!shapesPtr)
+    {
+        return textRangeList;
+    }
+    int shapeCount = 0;
+    shapesPtr->get_Count(&shapeCount);
+    for(int q = 1; q <= shapeCount + 1; ++q)
+    {
+        VARIANT shapeIndex;
+        VariantInit(&shapeIndex);
+        V_VT(&shapeIndex) = VT_I4;
+        V_I4(&shapeIndex) = q;
+        ks_stdptr<Shape> shapePtr;
+        shapesPtr->Item(shapeIndex, &shapePtr);
+        if(!shapePtr)
+        {
+            continue;
+        }
+
+        QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+        for(int i = 0; i < shapePtrList.count(); ++i)
+        {
+            ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+            ks_stdptr<TextFrame> textFramePtr;
+            tmpShape->get_TextFrame(&textFramePtr);
+            if(!textFramePtr)
+            {
+                continue;
+            }
+            ks_stdptr<TextRange> textRangePtr;
+            textFramePtr->get_TextRange(&textRangePtr);
+            if(textRangePtr)
+            {
+                textRangeList.append(textRangePtr);
+            }
+        }
+    }
+    return textRangeList;
+}
+
+QList<kfc::ks_stdptr<wppapi::TextRange>> WppComment::getRearks(long pageIndex)
+{
+    QList<ks_stdptr<TextRange>> qsRearkRangeList;
+    if(!m_spPresentation)
+    {
+        return qsRearkRangeList;
+    }
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return qsRearkRangeList;
+    }
+
+    long slidRangeCount = 0;
+    slidesPtr->get_Count(&slidRangeCount);
+
+    VARIANT rangeIndex;
+    VariantInit(&rangeIndex);
+    V_VT(&rangeIndex) = VT_I4;
+    V_I4(&rangeIndex) = pageIndex;
+
+    ks_stdptr<_Slide> slide;
+    slidesPtr->Item(rangeIndex, (Slide**)&slide);
+    if(slide)
+    {
+        ks_stdptr<SlideRange> slideRange;
+        slide->get_NotesPage(&slideRange);
+        if(slideRange)
+        {
+            ks_stdptr<Shapes> shapesPtr;
+            slideRange->get_Shapes(&shapesPtr);
+            QList<ks_stdptr<TextRange>> beizhuRangeList = GetTextRangeForShapes(shapesPtr);
+            qsRearkRangeList = beizhuRangeList;
+        }
+    }
+    return qsRearkRangeList;
 }
 
 void WppComment::replaceTextForWPPDoc(const QString &findText, const QString &replaceText)
@@ -217,23 +319,8 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
 
             ks_stdptr<Shape> shapePtr;
             shapesPtr->Item(shapeIndex, &shapePtr);
-            if(shapePtr)
-            {
-                MsoShapeType type;
-                shapePtr->get_Type(&type);
-                if(fileType == ImageType && (type == msoPicture || type == msoLinkedPicture))
-                {
-                    shapeList.append(shapePtr);
-                }
-                else if(fileType == OleFileType && (type == msoEmbeddedOLEObject || type == msoLinkedOLEObject))
-                {
-                    shapeList.append(shapePtr);
-                }
-                else
-                {
-                    qDebug()<<"other type";
-                }
-            }
+            QList<kfc::ks_stdptr<wppapi::Shape>> tmpShapeList = GetShapeGroupList(shapePtr, fileType);
+            shapeList.append(tmpShapeList);
         }
     }
 
@@ -243,11 +330,11 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
         ks_stdptr<Shape> shapePtr = shapeList.at(i);
         if(fileType == ImageType)
         {
-            WppComment::getPictureForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
+            getPictureForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
         }
         else if(fileType == OleFileType)
         {
-            WppComment::getOldFileDataForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
+            getOldFileDataForShape(belongShapesPtr, shapePtr, fileFunPtr, isContinue);
         }
         else
         {
@@ -438,15 +525,6 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRange()
         return textRangeList;
     }
 
-    long count = 0;
-    slidesPtr->get_Count(&count);
-    for (long i = 1; i <= count; ++i)
-    {
-        VARIANT v;
-        VariantInit(&v);
-        V_VT(&v) = VT_I4;
-        V_I4(&v) = i;
-
         long slidRangeCount = 0;
         slidesPtr->get_Count(&slidRangeCount);
         for(long j = 1; j <= slidRangeCount; ++j)
@@ -454,7 +532,7 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRange()
             VARIANT rangeIndex;
             VariantInit(&rangeIndex);
             V_VT(&rangeIndex) = VT_I4;
-            V_I4(&rangeIndex) = i;
+            V_I4(&rangeIndex) = j;
 
             ks_stdptr<SlideRange> range;
             slidesPtr->Range(rangeIndex, &range);
@@ -482,21 +560,26 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRange()
                 {
                     continue;
                 }
-                ks_stdptr<TextFrame> textFramePtr;
-                shapePtr->get_TextFrame(&textFramePtr);
-                if(!textFramePtr)
+                QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+                for(int i = 0; i < shapePtrList.count(); ++i)
                 {
-                    continue;
-                }
-                ks_stdptr<TextRange> textRangePtr;
-                textFramePtr->get_TextRange(&textRangePtr);
-                if(textRangePtr)
-                {
-                    textRangeList.append(textRangePtr);
+                    ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                    ks_stdptr<TextFrame> textFramePtr;
+                    tmpShape->get_TextFrame(&textFramePtr);
+                    if(!textFramePtr)
+                    {
+                        continue;
+                    }
+                    ks_stdptr<TextRange> textRangePtr;
+                    textFramePtr->get_TextRange(&textRangePtr);
+                    if(textRangePtr)
+                    {
+                        textRangeList.append(textRangePtr);
+                    }
                 }
             }
         }
-    }
+
     return textRangeList;
 }
 
@@ -521,4 +604,53 @@ bool WppComment::saveWPPDoc()
         return true;
     }
     return true;
+}
+
+QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppapi::Shape> shapePtr, EU_FileType fileterFileType)
+{
+    QStack<ks_stdptr<Shape> > shapePtrStack;
+    shapePtrStack.push(shapePtr);
+    QList<ks_stdptr<Shape> > shapeList;
+    while (!shapePtrStack.empty())
+    {
+        ks_stdptr<Shape> popShapePtr = shapePtrStack.pop();
+        if(popShapePtr)
+        {
+            MsoShapeType shapeType;
+            popShapePtr->get_Type(&shapeType);
+            if(shapeType == msoGroup)
+            {
+                ks_stdptr<GroupShapes> groupShapesPtr;
+                shapePtr->get_GroupItems(&groupShapesPtr);
+                if(groupShapesPtr)
+                {
+                    int groupShapeCount = 0;
+                    groupShapesPtr->get_Count(&groupShapeCount);
+                    for(int i = 1; i <= groupShapeCount; ++i)
+                    {
+                        VARIANT index;
+                        VariantInit(&index);
+                        V_VT(&index) = VT_I4;
+                        V_I4(&index) = i;
+                        ks_stdptr<Shape> groupShapePtr;
+                        groupShapesPtr->Item(index, &groupShapePtr);
+                        shapePtrStack.push(groupShapePtr);
+                    }
+                }
+                continue;
+            }
+            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture);
+            bool isOleFile = fileterFileType == OleFileType && (shapeType == msoEmbeddedOLEObject || shapeType == msoLinkedOLEObject);
+            bool isAllfileType = fileterFileType == AllFileType;
+            if(isImage || isOleFile || isAllfileType)
+            {
+                shapeList.append(popShapePtr);
+            }
+            else
+            {
+                qDebug()<<"shape type:"<<shapeType;
+            }
+        }
+    }
+    return shapeList;
 }

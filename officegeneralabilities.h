@@ -8,6 +8,7 @@
 #include <QDebug>
 enum EU_FileType
 {
+    AllFileType,
     ImageType,
     OleFileType
 };
@@ -23,6 +24,12 @@ inline bool OFFICE_HRESULT(HRESULT hr, const QString& msg) {
     }
 }
 
+inline QString GetBSTRText(BSTR str)
+{
+    QString qsStr;
+    qsStr = QString::fromUtf16(str);
+    return qsStr;
+}
 class OfficeGeneralAbilities
 {
 public:
