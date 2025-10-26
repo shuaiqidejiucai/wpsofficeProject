@@ -298,7 +298,7 @@ QList<kfc::ks_stdptr<Shape> > WpsComment::GetShapeGroupList(kfc::ks_stdptr<wpsap
                 }
                 continue;
             }
-            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture);
+            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture || shapeType == msoAutoShape);
             bool isOleFile = fileterFileType == OleFileType && (shapeType == msoEmbeddedOLEObject || shapeType == msoLinkedOLEObject);
             bool isAllfileType = fileterFileType == AllFileType;
             if(isImage || isOleFile || isAllfileType)
@@ -589,6 +589,16 @@ void WpsComment::getPictureForShapes(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, G
         shapesPtr->Item(&shapeIndex, &spShape);
         if(!spShape)
         {
+            continue;
+        }
+        MsoShapeType wpsShapeType;
+        spShape->get_Type(&wpsShapeType);
+        if(wpsShapeType == msoGroup)
+        {
+            ks_stdptr<ShapeRange> shapeRangePtr;
+            spShape->Ungroup(&shapeRangePtr);
+            shapesPtr->get_Count(&shapeCount);
+            i--;
             continue;
         }
         QList<kfc::ks_stdptr<Shape> > tmpShapeList = GetShapeGroupList(spShape, ImageType);
@@ -910,7 +920,7 @@ bool WpsComment::getPictureForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kf
     QByteArray encoded = QByteArray::fromRawData((char*)image.bits(), image.sizeInBytes());
     QBuffer buf(&encoded);
     buf.open(QIODevice::WriteOnly);
-    image.save(&buf, "JPG");
+    image.save(&buf, "PNG");
 
     ST_VarantFile varantFile;
     varantFile.fileData = buf.data();

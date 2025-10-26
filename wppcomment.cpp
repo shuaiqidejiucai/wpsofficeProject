@@ -1,5 +1,6 @@
 #include "wppcomment.h"
 #include <QDebug>
+#include "qlabel.h"
 #include "variant.h"
 #include "wpsapiex.h"
 #include <QApplication>
@@ -319,6 +320,20 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
 
             ks_stdptr<Shape> shapePtr;
             shapesPtr->Item(shapeIndex, &shapePtr);
+            MsoShapeType tmpShapgeType;
+            shapePtr->get_Type(&tmpShapgeType);
+
+            if(tmpShapgeType == msoGroup)
+            {
+                ks_stdptr<ShapeRange> shapeRangePtr;
+                shapePtr->Ungroup(&shapeRangePtr);
+                long llcount = 0;
+                shapeRangePtr->get_Count(&llcount);
+                shapesPtr->get_Count(&shapeCount);
+                j--;
+                continue;
+            }
+
             QList<kfc::ks_stdptr<wppapi::Shape>> tmpShapeList = GetShapeGroupList(shapePtr, fileType);
             shapeList.append(tmpShapeList);
         }
@@ -347,6 +362,7 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
     }
     return;
 }
+//int pppp = 0;
 
 bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue)
 {
@@ -355,14 +371,56 @@ bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kf
     {
         return result;
     }
+
+    float fleft = 0.0;
+    float ftop = 0.0;
+    float fwidth = 0.0;
+    float fheight = 0.0;
+
+    shapePtr->get_Left(&fleft);
+    shapePtr->get_Top(&ftop);
+    shapePtr->get_Width(&fwidth);
+    shapePtr->get_Height(&fheight);
+
+    // ks_bstr filePathBstr (QString("/mnt/hgfs/vmshare/dps-ppt/" + QString::number(pppp) + "ceshi.png").utf16());
+    // pppp++;
+    // HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatPNG);
+    // if(SUCCEEDED(opHr))
+    // {
+    //     qDebug()<<"success;";
+    // }
+    // else {
+    //     qDebug()<<"faile;";
+    // }
+    // isContinue = true;
+    // return false;
+    //MsoAutoShapeType autoShapeType;
+    //shapePtr->get_AutoShapeType()
     shapePtr->Copy();
-
+   // const QMimeData * tmpMimeData = qApp->clipboard()->mimeData();
+    //tmpShapePtr->Delete();
+    // QStringList formatList =  qApp->clipboard()->mimeData()->formats();
+    // if(formatList.indexOf("image/png") != -1)
+    // {
+    //     qDebug()<<"shape;";
+    // }
+    // for(int i = 0; i < formatList.count(); ++i)
+    // {
+    //     QString qsFormat = formatList.at(i);
+    //     QByteArray datda = tmpMimeData->data(qsFormat);
+    //     qDebug()<<"data size:" << datda.size();
+    // }
     QImage image = qApp->clipboard()->image();
-
+    if(image.isNull())
+    {
+        isContinue = true;
+        return result;
+    }
     QByteArray encoded = QByteArray::fromRawData((char*)image.bits(), image.sizeInBytes());
     QBuffer buf(&encoded);
     buf.open(QIODevice::WriteOnly);
-    image.save(&buf, "JPG");
+
+    image.save(&buf, "PNG");
 
     ST_VarantFile varantFile;
     varantFile.fileData = buf.data();
@@ -373,7 +431,7 @@ bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kf
     if(euOperateType == DeleteType)
     {
         HRESULT hr = shapePtr->Delete();
-        result = OFFICE_HRESULT(hr, "delete");
+        result= OFFICE_HRESULT(hr, "delete");
         //日至
     }
     else if(euOperateType == ReplaceType)
@@ -620,6 +678,7 @@ QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppap
             popShapePtr->get_Type(&shapeType);
             if(shapeType == msoGroup)
             {
+                ks_stdptr<ShapeRange> shapeRangePtr;
                 ks_stdptr<GroupShapes> groupShapesPtr;
                 shapePtr->get_GroupItems(&groupShapesPtr);
                 if(groupShapesPtr)
@@ -639,7 +698,7 @@ QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppap
                 }
                 continue;
             }
-            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture);
+            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture || shapeType == msoAutoShape);
             bool isOleFile = fileterFileType == OleFileType && (shapeType == msoEmbeddedOLEObject || shapeType == msoLinkedOLEObject);
             bool isAllfileType = fileterFileType == AllFileType;
             if(isImage || isOleFile || isAllfileType)

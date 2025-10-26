@@ -22,10 +22,10 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
         file.close();
         gloabalIndex++;
     }
-    // QImage image = QImage::fromData(ba);
-    // QLabel *label = new QLabel;
-    // label->setPixmap(QPixmap::fromImage(image));
-    // label->show();
+    QImage image = QImage::fromData(ba);
+    QLabel *label = new QLabel;
+    label->setPixmap(QPixmap::fromImage(image));
+    label->show();
     return true;
 }
 
