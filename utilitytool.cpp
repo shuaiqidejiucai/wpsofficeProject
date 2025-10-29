@@ -1,6 +1,7 @@
 #include "utilitytool.h"
 #include <libolecf.h>
 #include <libbfio_handle.h>
+#include <libolecf/libolecf_file.h>
 #include <libbfio_memory_range.h>
 #include <QDebug>
 #include <QBuffer>

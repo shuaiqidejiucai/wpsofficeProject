@@ -4,7 +4,8 @@ QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
 TARGET = wpsDemo
 TEMPLATE = app
 QT_QPA_PLATFORM=xcb
-DEFINES+=LIBOLECF_HAVE_WIDE_CHARACTER_TYPE HAVE_LOCAL_LIBBFIO HAVE_LOCAL_LIBCDATA HAVE_LOCAL_LIBCERROR LIBOLECF_HAVE_BFIO
+
+DEFINES+= HAVE_LOCAL_LIBBFIO HAVE_LOCAL_LIBCDATA HAVE_LOCAL_LIBCERROR
 exists(/opt/kingsoft/wps-office/office6/libstdc++.so.6){
         system(ln -s /opt/kingsoft/wps-office/office6/libstdc++.so.6  libstdc++.so.6)
         LIBS += libstdc++.so.6
@@ -29,10 +30,10 @@ INCLUDEPATH = . \
                 ./et \
                 ./wps \
                 ./wpp \
-                ../include/common \
-                ../include/wps \
-                ../include/wpp \
-                ../include/et
+                ./include/common \
+                ./include/wps \
+                ./include/wpp \
+                ./include/et
 
 SOURCES += \
     etcomment.cpp \
@@ -54,18 +55,55 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-INCLUDEPATH += /usr/local/include/QuaZip-Qt5-1.5/quazip
-LIBS += -L"/usr/local/lib/" -lquazip1-qt5
+INCLUDEPATH += $$PWD/qunzip/include
+LIBS += -L"$$PWD/qunzip/lib" -lquazipSelf
 
-# INCLUDEPATH += /usr/local/include/libolecf
 
-INCLUDEPATH += /usr/local/include
-INCLUDEPATH += /home/user/mjc/libolecf/common
-INCLUDEPATH += /home/user/mjc/libolecf/libbfio
-INCLUDEPATH += /home/user/mjc/libolecf/libcdata
-INCLUDEPATH += /home/user/mjc/libolecf/libcerror
-INCLUDEPATH += /home/user/mjc/libolecf/libolecf
-LIBS += -L"/usr/local/lib" -lolecf
+INCLUDEPATH += $$PWD/libolecfself/include
+INCLUDEPATH += $$PWD/libolecfself/include/common
+INCLUDEPATH += $$PWD/libolecfself/include/libbfio
+INCLUDEPATH += $$PWD/libolecfself/include/libcdata
+INCLUDEPATH += $$PWD/libolecfself/include/libcerror
+INCLUDEPATH += $$PWD/libolecfself/include/libolecf
+INCLUDEPATH += $$PWD/libolecfself/src/include/libcpath
+
+INCLUDEPATH += $$INCLUDEDIR/common
+INCLUDEPATH += $$INCLUDEDIR/libolecf
+INCLUDEPATH += $$SRCINCLUDEDIR/libfwps
+INCLUDEPATH += $$INCLUDEDIR/libbfio
+
+INCLUDEPATH += $$INCLUDEDIR/libcdata
+INCLUDEPATH += $$SRCINCLUDEDIR/libcnotify
+INCLUDEPATH += $$SRCINCLUDEDIR/libfdatetime
+INCLUDEPATH += $$SRCINCLUDEDIR/libfguid
+INCLUDEPATH += $$SRCINCLUDEDIR/libfole
+INCLUDEPATH += $$SRCINCLUDEDIR/libfvalue
+INCLUDEPATH += $$SRCINCLUDEDIR/libcfile
+INCLUDEPATH += $$SRCINCLUDEDIR/libuna
+# INCLUDEPATH += $$SRCINCLUDEDIR/libcpath
+INCLUDEPATH += $$SRCINCLUDEDIR/libclocale
+
+
+LIBS += -L"$$PWD/libolecfself/lib/libolecf" -llibolecf
+LIBS += -L"$$PWD/libolecfself/lib/libcdata" -llibcdata
+LIBS += -L"$$PWD/libolecfself/lib/libfwps" -llibfwps
+LIBS += -L"$$PWD/libolecfself/lib/libbfio" -llibbfio
+LIBS += -L"$$PWD/libolecfself/lib/libcnotify" -llibcnotify
+LIBS += -L"$$PWD/libolecfself/lib/libfdatetime" -llibfdatetime
+LIBS += -L"$$PWD/libolecfself/lib/libfguid" -llibfguid
+LIBS += -L"$$PWD/libolecfself/lib/libfole" -llibfole
+LIBS += -L"$$PWD/libolecfself/lib/libfvalue" -llibfvalue
+LIBS += -L"$$PWD/libolecfself/lib/libuna" -llibuna
+LIBS += -L"$$PWD/libolecfself/lib/libclocale" -llibclocale
+LIBS += -L"$$PWD/libolecfself/lib/libcpath" -llibcpath
+LIBS += -L"$$PWD/libolecfself/lib/libcfile" -llibcfile
+LIBS += -L"$$PWD/libolecfself/lib/libcsplit" -llibcsplit
+LIBS += -L"$$PWD/libolecfself/lib/libcerror" -llibcerror
+# win32 {
+#     QMAKE_PRE_LINK += copy /Y $$PWD/lib/source.txt $$PWD/lib//libquazipSelf.txt
+# } else:unix {
+#     QMAKE_PRE_LINK += cp -f $$PWD/libolecfself/lib/ $$OUT_PWD/lib/
+# }
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
