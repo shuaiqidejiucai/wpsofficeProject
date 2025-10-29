@@ -8,7 +8,7 @@ SRCDIR = $$PWD/$$TARGET
 SRCINCLUDEDIR = $$PWD/include
 LIBDIR = $$PWD/../lib
 INCLUDEPATH += $$INCLUDEDIR/libcerror
-
+INCLUDEPATH += $$INCLUDEDIR/libolecf
 HEADERS += \
     $$INCLUDEDIR/common/byte_stream.h \
     $$INCLUDEDIR/common/config.h \

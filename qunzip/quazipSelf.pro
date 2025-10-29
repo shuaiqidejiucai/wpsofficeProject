@@ -2,7 +2,7 @@ QT -= gui
 
 TEMPLATE = lib
 DEFINES += QUAZIP_BUILD
-
+CONFIG += staticlib
 CONFIG += c++11
 
 # You can make your code fail to compile if it uses deprecated APIs.
