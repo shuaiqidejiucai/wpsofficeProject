@@ -2,8 +2,6 @@
 #include <QPixmap>
 #include "variant.h"
 #include <QDebug>
-#include <QApplication>
-#include <QLabel>
 #include <QClipboard>
 #include <QMimeData>
 #include <QFile>
@@ -13,7 +11,7 @@
 #include <libbfio_handle.h>
 #include <libbfio_memory_range.h>
 #include <QStack>
-
+#include <QApplication>
 using namespace wpsapi;
 using namespace kfc;
 using namespace wpsapiex;

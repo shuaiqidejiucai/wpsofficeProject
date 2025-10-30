@@ -4,11 +4,11 @@ QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
 TARGET = wpsDemo
 TEMPLATE = app
 QT_QPA_PLATFORM=xcb
-
 DEFINES+= HAVE_LOCAL_LIBBFIO HAVE_LOCAL_LIBCDATA HAVE_LOCAL_LIBCERROR
+
 exists(/opt/kingsoft/wps-office/office6/libstdc++.so.6){
         system(ln -s /opt/kingsoft/wps-office/office6/libstdc++.so.6  libstdc++.so.6)
-        LIBS += libstdc++.so.6
+        LIBS += $$PWD/libstdc++.so.6
 }
 
 QMAKE_LFLAGS += -Wl,--rpath=\'\$\$ORIGIN\':$$[QT_INSTALL_LIBS]:/opt/kingsoft/wps-office/office6
@@ -99,6 +99,8 @@ LIBS += -L"$$PWD/libolecfself/lib/libcpath" -llibcpath
 LIBS += -L"$$PWD/libolecfself/lib/libcfile" -llibcfile
 LIBS += -L"$$PWD/libolecfself/lib/libcsplit" -llibcsplit
 LIBS += -L"$$PWD/libolecfself/lib/libcerror" -llibcerror
+
+
 # win32 {
 #     QMAKE_PRE_LINK += copy /Y $$PWD/lib/source.txt $$PWD/lib//libquazipSelf.txt
 # } else:unix {

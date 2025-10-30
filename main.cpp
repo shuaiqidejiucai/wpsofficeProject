@@ -22,10 +22,10 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
         file.close();
         gloabalIndex++;
     }
-    QImage image = QImage::fromData(ba);
-    QLabel *label = new QLabel;
-    label->setPixmap(QPixmap::fromImage(image));
-    label->show();
+//    QImage image = QImage::fromData(ba);
+//    QLabel *label = new QLabel;
+//    label->setPixmap(QPixmap::fromImage(image));
+//    label->show();
     return true;
 }
 
@@ -53,18 +53,46 @@ void killWppProcess()
     }
 }
 
+#include "pptcfunoutout.h"
+#include <QLibrary>
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    //QApplication a(argc, argv);
 
-    QDir dir("/mnt/hgfs/vmshare/dps-ppt");
+    typedef void (*fun_singlefile)(const char*, const char*, char*, char*);
+
+    QLibrary lib("/home/ft2000/mjcenv/wpsofficeProject/lib/pptcfunoutout");
+    if (lib.load()) {
+        fun_singlefile pptCFunOutput = (fun_singlefile)lib.resolve("fun_singlefile");
+        if (pptCFunOutput) {
+            char textCh[2048]= {0};
+            char imageCh[2048] = {0};
+            pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示文件-SM- (9).ppt", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
+            qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
+        } else {
+            qDebug() << "函数加载失败:" << lib.errorString();
+        }
+    } else {
+        qDebug() << "库加载失败:" << lib.errorString();
+    }
+
+    //pptCFunOutput("/home/ft2000/mjcenv/dps-ppt", "/home/ft2000/mjcenv/dps-ppt");
+return 0;
+    //return a.exec();
+    QDir dir("/home/ft2000/mjcenv/dps-ppt");
+
     if(dir.exists())
     {
         killWppProcess();
         WppComment wpp;
         wpp.initWPPRpcClient();
         wpp.initWppApplication();
-        QFileInfoList wppFileInfoList = dir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+        QStringList filterStrList;
+        filterStrList.append("*.dps");
+        filterStrList.append("*.ppt");
+        filterStrList.append("*.pptx");
+
+        QFileInfoList wppFileInfoList = dir.entryInfoList(filterStrList ,QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
         QElapsedTimer time;
         time.start();
         for(int i = 0; i < wppFileInfoList.count(); ++i)
@@ -133,5 +161,5 @@ int main(int argc, char *argv[])
     // etCom.initEtRpcClient();
     // etCom.initEtApplication();
 
-    return a.exec();
+   // return a.exec();
 }
