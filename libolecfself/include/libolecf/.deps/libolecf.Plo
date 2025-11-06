@@ -1,0 +1,7 @@
+libolecf.lo: libolecf.c /usr/include/stdc-predef.h ../common/common.h \
+ ../common/config.h ../common/config_winapi.h libolecf_unused.h
+/usr/include/stdc-predef.h:
+../common/common.h:
+../common/config.h:
+../common/config_winapi.h:
+libolecf_unused.h:
