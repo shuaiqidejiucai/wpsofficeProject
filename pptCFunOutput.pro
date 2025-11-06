@@ -114,5 +114,3 @@ LIBS += -L"$$LIBDIR/libcerror" -llibcerror
 #UI_DIR = $$PWD/build/ui
 #RCC_DIR = $$PWD/build/rcc
 #DESTDIR = $$PWD/lib
-QMAKE_CXXFLAGS += -march=native
-QMAKE_CFLAGS += -march=native

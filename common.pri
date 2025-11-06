@@ -5,11 +5,17 @@ CONFIG(release, debug|release){
 platform=release
 }
 
-contains(QMAKE_CXX, clang){
+contains(QMAKE_CXX, clang++){
 COMPILENAME=clang
 }
-contains(QMAKE_CXX, gcc)
-{
+contains(QMAKE_CXX, g++){
+COMPILENAME=gcc
+}
+
+contains(QMAKE_CC, clang){
+COMPILENAME=clang
+}
+contains(QMAKE_CC, gcc){
 COMPILENAME=gcc
 }
 OBJECTS_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/obj

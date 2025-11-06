@@ -13,6 +13,7 @@
 #include <QMutex>
 #include <QTextStream>
 #include <QDateTime>
+#include <QStringList>
 
 QString tmpImagePath;
 int gloabalIndex = 0;
@@ -164,125 +165,125 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
 {
 //    //qInstallMessageHandler(myMessageOutput);
     QString qsInputfilepath = QString::fromUtf8(inputfilepath);
-//    QFileInfo inputPathInfo(qsInputfilepath);
-//    QStringList filterStrList;
-//    filterStrList.append("dps");
-//    filterStrList.append("ppt");
-//    filterStrList.append("pptx");
+    QFileInfo inputPathInfo(qsInputfilepath);
+    QStringList filterStrList;
+    filterStrList.append("dps");
+    filterStrList.append("ppt");
+    filterStrList.append("pptx");
 
-//    if(!inputPathInfo.exists())
-//    {
-//        qDebug()<<"file is No exists";
-//        return 1;
-//    }
-//    if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
-//    {
-//        qDebug()<<inputPathInfo.suffix();
-//        qDebug()<<"file type is error";
-//        return 1;
-//    }
-//    if(!outfilepath)
-//    {
-//        return 1;
-//    }
-//    if(!imagedir)
-//    {
-//        return 1;
-//    }
+    if(!inputPathInfo.exists())
+    {
+        qDebug()<<"file is No exists";
+        return 1;
+    }
+    if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
+    {
+        qDebug()<<inputPathInfo.suffix();
+        qDebug()<<"file type is error";
+        return 1;
+    }
+    if(!outfilepath)
+    {
+        return 1;
+    }
+    if(!imagedir)
+    {
+        return 1;
+    }
 
-//    QString qsRootpath = QString::fromUtf8(rootpath);
-//    QDir dir(qsRootpath);
-//    if(!dir.exists())
-//    {
-//        qDebug()<<"floder no exists try create floder";
-//        bool isSuccessful = dir.mkpath(qsRootpath);
-//        if(!isSuccessful)
-//        {
-//            qDebug()<<"create failed";
-//            return 1;
-//        }
-//    }
-//    if(qsRootpath.right(1) == "/")
-//    {
-//        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
-//    }
+    QString qsRootpath = QString::fromUtf8(rootpath);
+    QDir dir(qsRootpath);
+    if(!dir.exists())
+    {
+        qDebug()<<"floder no exists try create floder";
+        bool isSuccessful = dir.mkpath(qsRootpath);
+        if(!isSuccessful)
+        {
+            qDebug()<<"create failed";
+            return 1;
+        }
+    }
+    if(qsRootpath.right(1) == "/")
+    {
+        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
+    }
 
-//    QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
-//    QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
-//    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
-//    //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
-//    tmpImagePath = qsFileImageOutDir + "/";
+    QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
+    QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
+    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+    //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+    tmpImagePath = qsFileImageOutDir + "/";
 
-//    QDir fileTextOutDir(qsFileTextOutDir);
-//    if(fileTextOutDir.exists())
-//    {
-//        qDebug()<<qsFileTextOutDir<<": existed ready delete";
-//        if(fileTextOutDir.removeRecursively())
-//        {
-//            qDebug()<<qsFileTextOutDir<<": delete successful";
-//        }
-//    }
+    QDir fileTextOutDir(qsFileTextOutDir);
+    if(fileTextOutDir.exists())
+    {
+        qDebug()<<qsFileTextOutDir<<": existed ready delete";
+        if(fileTextOutDir.removeRecursively())
+        {
+            qDebug()<<qsFileTextOutDir<<": delete successful";
+        }
+    }
 
-//    if(fileTextOutDir.mkpath(qsFileTextOutDir))
-//    {
-//        qDebug()<<qsFileTextOutDir<<": create successful";
-//    }
+    if(fileTextOutDir.mkpath(qsFileTextOutDir))
+    {
+        qDebug()<<qsFileTextOutDir<<": create successful";
+    }
 
-//    QDir fileImageOutDir(qsFileImageOutDir);
-//    if(fileImageOutDir.exists())
-//    {
-//        qDebug()<<qsFileImageOutDir<<": existed ready delete";
-//        if(fileImageOutDir.removeRecursively())
-//        {
-//            qDebug()<<qsFileImageOutDir<<": delete successful";
-//        }
-//    }
-//    if(fileImageOutDir.mkpath(qsFileImageOutDir))
-//    {
-//        qDebug()<<qsFileImageOutDir<<": create successful";
-//    }
-//    qsFileTextOutFile.toUtf8().size();
-  //  memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
- //   memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
+    QDir fileImageOutDir(qsFileImageOutDir);
+    if(fileImageOutDir.exists())
+    {
+        qDebug()<<qsFileImageOutDir<<": existed ready delete";
+        if(fileImageOutDir.removeRecursively())
+        {
+            qDebug()<<qsFileImageOutDir<<": delete successful";
+        }
+    }
+    if(fileImageOutDir.mkpath(qsFileImageOutDir))
+    {
+        qDebug()<<qsFileImageOutDir<<": create successful";
+    }
+    qsFileTextOutFile.toUtf8().size();
+    memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
+    memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
 
 
-//    static QGuiApplication* app = nullptr;
-//    static int argc = 0;
-//    static char* argv[] = {nullptr};
+    static QGuiApplication* app = nullptr;
+    static int argc = 0;
+    static char* argv[] = {nullptr};
 
-//    bool isNeedFreeAppplication = false;
-//    if (!QCoreApplication::instance())
-//    {
-//        // 第一次调用时自动创建 QGuiApplication
-//        app = new QGuiApplication(argc, argv);
-//        isNeedFreeAppplication = true;
-//    }
-//    WppComment wpp;
-//    wpp.initWPPRpcClient();
-//    wpp.initWppApplication();
-//    if(wpp.openWPPDoc(qsInputfilepath))
-//    {
-//        qDebug()<<"file open successful";
-//        QStringList qsTextList = wpp.GetWPPText();
-//        QFile file(qsFileTextOutFile);
-//        if(file.open(QIODevice::WriteOnly))
-//        {
-//            QString qsText = qsTextList.join("\r\n");
-//            file.write(qsText.toUtf8());
-//            file.close();
-//        }
-//        gloabalIndex = 0;
-//        wpp.extractPicture(TestPicture);
-//        wpp.closeWPPDoc();
-//    }
-//    else
-//    {
-//        qFatal("file open fatal");
-//    }
-//    wpp.closeApp();
-//    if(isNeedFreeAppplication)
-//    {
-//        app->deleteLater();
-//    }
+    bool isNeedFreeAppplication = false;
+    if (!QCoreApplication::instance())
+    {
+        // 第一次调用时自动创建 QGuiApplication
+        app = new QGuiApplication(argc, argv);
+        isNeedFreeAppplication = true;
+    }
+    WppComment wpp;
+    wpp.initWPPRpcClient();
+    wpp.initWppApplication();
+    if(wpp.openWPPDoc(qsInputfilepath))
+    {
+        qDebug()<<"file open successful";
+        QStringList qsTextList = wpp.GetWPPText();
+        QFile file(qsFileTextOutFile);
+        if(file.open(QIODevice::WriteOnly))
+        {
+            QString qsText = qsTextList.join("\r\n");
+            file.write(qsText.toUtf8());
+            file.close();
+        }
+        gloabalIndex = 0;
+        wpp.extractPicture(TestPicture);
+        wpp.closeWPPDoc();
+    }
+    else
+    {
+        qFatal("file open fatal");
+    }
+    wpp.closeApp();
+    if(isNeedFreeAppplication)
+    {
+        app->deleteLater();
+    }
     return 0;
 }

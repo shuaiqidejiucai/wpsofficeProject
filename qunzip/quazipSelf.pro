@@ -56,5 +56,4 @@ unix {
     target.path = /usr/lib
 }
 !isEmpty(target.path): INSTALLS += target
-QMAKE_CXXFLAGS += -march=native
-QMAKE_CFLAGS += -march=native
+

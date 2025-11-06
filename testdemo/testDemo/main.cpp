@@ -9,6 +9,9 @@
 #include <QLabel>
 #include <QDir>
 #include <QStack>
+#include <QFile>
+#include <QIODevice>
+#include <QString>
 QString tmpAllPath;
 int gloabalIndex = 0;
 static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
@@ -61,7 +64,7 @@ int main(int argc, char *argv[])
 
     typedef void (*fun_singlefile)(const char*, const char*, char*, char*);
 
-    QLibrary lib("/home/ft2000/mjcenv/wpsofficeprojectNew/wpsofficeProject/lib/gcc/release/pptcfunoutout/pptcfunoutout");
+    QLibrary lib("/home/ft2000/mjcenv/wpsofficeprojectNew/wpsofficeProject/lib/clang/debug/pptcfunoutout/pptcfunoutout");
     if (lib.load()) {
         fun_singlefile pptCFunOutput = (fun_singlefile)lib.resolve("fun_singlefile");
         if (pptCFunOutput) {
