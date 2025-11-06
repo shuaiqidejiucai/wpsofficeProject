@@ -63,8 +63,11 @@ int main(int argc, char *argv[])
     //QApplication a(argc, argv);
 
     typedef void (*fun_singlefile)(const char*, const char*, char*, char*);
-
-    QLibrary lib("/home/ft2000/mjcenv/wpsofficeprojectNew/wpsofficeProject/lib/clang/debug/pptcfunoutout/pptcfunoutout");
+    QString qsLibPath;
+#ifdef PPTCFUNLIBPATH
+    qsLibPath = QString(PPTCFUNLIBPATH) + "/pptcfunoutout";
+#endif
+    QLibrary lib(qsLibPath);
     if (lib.load()) {
         fun_singlefile pptCFunOutput = (fun_singlefile)lib.resolve("fun_singlefile");
         if (pptCFunOutput) {

@@ -18,6 +18,8 @@ COMPILENAME=clang
 contains(QMAKE_CC, gcc){
 COMPILENAME=gcc
 }
+
+
 OBJECTS_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/obj
 MOC_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/moc
 UI_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/ui
@@ -27,3 +29,8 @@ DESTDIR = $$PWD/lib/$$COMPILENAME/$$platform/$$TARGET
 LIBDIR = $$PWD/lib/$$COMPILENAME/$$platform
 
 INCLUDEDIR=$$PWD/include
+
+equals(TEMPLATE, app){
+DESTDIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET
+
+}

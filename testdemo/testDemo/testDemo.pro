@@ -1,7 +1,7 @@
 QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
+TEMPLATE = app
 CONFIG += c++11
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -44,6 +44,7 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui
+DEFINES += PPTCFUNLIBPATH=\\\"$$LIBDIR/pptcfunoutout\\\"
 
 LIBS += -L"$$LIBDIR/quazipSelf" -lquazipSelf
 # Default rules for deployment.
