@@ -16,10 +16,10 @@ const QString MimeDataKey = "Kingsoft WPS 9.0 Format";
 
 inline bool OFFICE_HRESULT(HRESULT hr, const QString& msg) {
     if (SUCCEEDED(hr)) {
-        qDebug() << msg + " SUCCEEDED";
+        //qDebug() << msg + " SUCCEEDED";
         return true;
     } else {
-        qDebug() << msg + " FAILED";
+        //qDebug() << msg + " FAILED";
         return false;
     }
 }

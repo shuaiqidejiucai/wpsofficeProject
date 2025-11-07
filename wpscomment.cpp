@@ -37,7 +37,7 @@ bool WpsComment::initWpsRpcClient()
     HRESULT hr = createWpsRpcInstance(&m_rpcClient);
     if (hr != S_OK)
     {
-        qDebug() <<"get WpsRpcClient erro";
+        //qDebug() <<"get WpsRpcClient erro";
         return false;
     }
     BSTR StrWpsAddress = SysAllocString(__X("/opt/kingsoft/wps-office/office6/wps"));
@@ -89,12 +89,12 @@ bool WpsComment::openWPSDoc(const QString &fileName)
 
     if (SUCCEEDED(hr))
     {
-        qDebug() << "open ok";
+        //qDebug() << "open ok";
         return true;
     }
     else
     {
-        qDebug() << "open fail";
+        //qDebug() << "open fail";
     }
 
     return false;
@@ -305,7 +305,7 @@ QList<kfc::ks_stdptr<Shape> > WpsComment::GetShapeGroupList(kfc::ks_stdptr<wpsap
             }
             else
             {
-                qDebug()<<"shape type:"<<shapeType;
+                //qDebug()<<"shape type:"<<shapeType;
             }
         }
     }
@@ -421,7 +421,7 @@ void WpsComment::extractFile(EU_FileType fileType,GetNextOleDataFun fileFunPtr)
     }
     else
     {
-        qDebug()<<"Unknown file Type";
+        //qDebug()<<"Unknown file Type";
     }
 }
 
@@ -725,7 +725,7 @@ bool WpsComment::getOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr
             }
             else
             {
-                qDebug()<<"No Operate Type";
+                //qDebug()<<"No Operate Type";
             }
         }
     }
@@ -811,7 +811,7 @@ bool WpsComment::getOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShape
             }
             else
             {
-                qDebug()<<"No opreate type";
+                //qDebug()<<"No opreate type";
             }
         }
     }
@@ -887,7 +887,7 @@ bool WpsComment::getPictureForInlineShape(kfc::ks_stdptr<wpsapi::InlineShapes> s
     }
     else
     {
-        qDebug()<< "No opreate type";
+        //qDebug()<< "No opreate type";
     }
     return result;
 }
@@ -986,7 +986,7 @@ bool WpsComment::getPictureForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, kf
     }
     else
     {
-        qDebug()<<"Unknown Type";
+        //qDebug()<<"Unknown Type";
     }
     return result;
 }

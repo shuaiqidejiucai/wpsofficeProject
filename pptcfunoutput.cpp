@@ -173,13 +173,13 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
 
     if(!inputPathInfo.exists())
     {
-        qDebug()<<"file is No exists";
+        //qDebug()<<"file is No exists";
         return 1;
     }
     if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
     {
-        qDebug()<<inputPathInfo.suffix();
-        qDebug()<<"file type is error";
+        //qDebug()<<inputPathInfo.suffix();
+        //qDebug()<<"file type is error";
         return 1;
     }
     if(!outfilepath)
@@ -195,11 +195,11 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
     QDir dir(qsRootpath);
     if(!dir.exists())
     {
-        qDebug()<<"floder no exists try create floder";
+        //qDebug()<<"floder no exists try create floder";
         bool isSuccessful = dir.mkpath(qsRootpath);
         if(!isSuccessful)
         {
-            qDebug()<<"create failed";
+            //qDebug()<<"create failed";
             return 1;
         }
     }
@@ -210,37 +210,37 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
 
     QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
     QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
-    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+    QString qsFileImageOutDir = qsRootpath + "/outImage/" + "testFile"; //inputPathInfo.fileName();
     //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
     tmpImagePath = qsFileImageOutDir + "/";
 
     QDir fileTextOutDir(qsFileTextOutDir);
     if(fileTextOutDir.exists())
     {
-        qDebug()<<qsFileTextOutDir<<": existed ready delete";
+        //qDebug()<<qsFileTextOutDir<<": existed ready delete";
         if(fileTextOutDir.removeRecursively())
         {
-            qDebug()<<qsFileTextOutDir<<": delete successful";
+            //qDebug()<<qsFileTextOutDir<<": delete successful";
         }
     }
 
     if(fileTextOutDir.mkpath(qsFileTextOutDir))
     {
-        qDebug()<<qsFileTextOutDir<<": create successful";
+        //qDebug()<<qsFileTextOutDir<<": create successful";
     }
 
     QDir fileImageOutDir(qsFileImageOutDir);
     if(fileImageOutDir.exists())
     {
-        qDebug()<<qsFileImageOutDir<<": existed ready delete";
+        //qDebug()<<qsFileImageOutDir<<": existed ready delete";
         if(fileImageOutDir.removeRecursively())
         {
-            qDebug()<<qsFileImageOutDir<<": delete successful";
+            //qDebug()<<qsFileImageOutDir<<": delete successful";
         }
     }
     if(fileImageOutDir.mkpath(qsFileImageOutDir))
     {
-        qDebug()<<qsFileImageOutDir<<": create successful";
+        //qDebug()<<qsFileImageOutDir<<": create successful";
     }
     qsFileTextOutFile.toUtf8().size();
     memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
@@ -258,12 +258,17 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
         app = new QGuiApplication(argc, argv);
         isNeedFreeAppplication = true;
     }
+
     WppComment wpp;
     wpp.initWPPRpcClient();
     wpp.initWppApplication();
+
+
     if(wpp.openWPPDoc(qsInputfilepath))
     {
-        qDebug()<<"file open successful";
+
+        //qDebug()<<"file open successful";
+
         QStringList qsTextList = wpp.GetWPPText();
         QFile file(qsFileTextOutFile);
         if(file.open(QIODevice::WriteOnly))
@@ -272,15 +277,25 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
             file.write(qsText.toUtf8());
             file.close();
         }
+
         gloabalIndex = 0;
+        QElapsedTimer time;
+        time.start();
+        //wpp.extractPictureNomemery(qsFileImageOutDir);
         wpp.extractPicture(TestPicture);
+        qint64 userd = time.elapsed();
+        qDebug()<<"run time:<<<<" << userd<<" ms";
         wpp.closeWPPDoc();
     }
     else
     {
         qFatal("file open fatal");
     }
+
     wpp.closeApp();
+
+    //qint64 userd = time.elapsed();
+   // qDebug()<<"run time:<<<<" << userd<<" ms";
     if(isNeedFreeAppplication)
     {
         app->deleteLater();

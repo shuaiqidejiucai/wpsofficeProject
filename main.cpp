@@ -57,28 +57,7 @@ void killWppProcess()
 #include <QLibrary>
 int main(int argc, char *argv[])
 {
-    //QApplication a(argc, argv);
-
-    typedef void (*fun_singlefile)(const char*, const char*, char*, char*);
-
-    QLibrary lib("/home/ft2000/mjcenv/wpsofficeProject/lib/pptcfunoutout");
-    if (lib.load()) {
-        fun_singlefile pptCFunOutput = (fun_singlefile)lib.resolve("fun_singlefile");
-        if (pptCFunOutput) {
-            char textCh[2048]= {0};
-            char imageCh[2048] = {0};
-            pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示文件-SM- (9).ppt", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
-            qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
-        } else {
-            qDebug() << "函数加载失败:" << lib.errorString();
-        }
-    } else {
-        qDebug() << "库加载失败:" << lib.errorString();
-    }
-
-    //pptCFunOutput("/home/ft2000/mjcenv/dps-ppt", "/home/ft2000/mjcenv/dps-ppt");
-return 0;
-    //return a.exec();
+    QApplication a(argc, argv);
     QDir dir("/home/ft2000/mjcenv/dps-ppt");
 
     if(dir.exists())
@@ -117,15 +96,15 @@ return 0;
 
             wpp.openWPPDoc(qsAbsoluteFilePath);
             //wpp.GetBeiZhu();
-            QStringList qsTextList = wpp.GetWPPText();
-            QFile file(destPath + "/content" + ".txt");
-            if(file.open(QIODevice::WriteOnly))
-            {
-                QString qsText = qsTextList.join("\r\n");
-                file.write(qsText.toUtf8());
-                file.close();
-            }
-            tmpAllPath = destPath + "/content";
+//            QStringList qsTextList = wpp.GetWPPText();
+//            QFile file(destPath + "/content" + ".txt");
+//            if(file.open(QIODevice::WriteOnly))
+//            {
+//                QString qsText = qsTextList.join("\r\n");
+//                file.write(qsText.toUtf8());
+//                file.close();
+//            }
+//            tmpAllPath = destPath + "/content";
             wpp.extractPicture(TestPicture);
             gloabalIndex = 0;
             wpp.closeWPPDoc();
@@ -133,7 +112,7 @@ return 0;
         }
         wpp.closeApp();
         qint64 userd = time.elapsed();
-        qDebug()<<"run time:<<<<" << userd<<" ms";
+        //qDebug()<<"run time:<<<<" << userd<<" ms";
     }
 
     // WppComment wpp;
@@ -144,7 +123,7 @@ return 0;
 
 
 
-   // qDebug()<< wpp.GetWPPText();
+   // //qDebug()<< wpp.GetWPPText();
     //wpp.replaceTextForWPPDoc(u8"神马玩意儿", "");
     //wpp.saveWPPDoc();
     //wpp.closeApp();
@@ -162,4 +141,5 @@ return 0;
     // etCom.initEtApplication();
 
    // return a.exec();
+    return 0;
 }

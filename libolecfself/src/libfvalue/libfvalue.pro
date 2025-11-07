@@ -1,4 +1,3 @@
-include(../../../common.pri)
 include(../publicArgs.pri)
 
 DEFINES += HAVE_LOCAL_LIBCNOTIFY HAVE_LOCAL_LIBUNA HAVE_LOCAL_LIBFVALUE HAVE_LOCAL_LIBCDATA

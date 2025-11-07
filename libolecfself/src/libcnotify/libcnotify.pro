@@ -1,4 +1,3 @@
-include(../../../common.pri)
 include(../publicArgs.pri)
 
 DEFINES += HAVE_ERRNO_H HAVE_STDARG_H HAVE_LOCAL_LIBCNOTIFY

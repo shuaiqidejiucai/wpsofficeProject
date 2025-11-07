@@ -6,6 +6,11 @@
 #include <QImage>
 #include <QScopedPointer>
 
+//#ifdef _DEBUG
+//int i = 0;
+//#else
+
+//#endif
 enum EU_OperateType
 {
     NoOperateType,

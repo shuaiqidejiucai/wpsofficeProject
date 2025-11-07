@@ -74,12 +74,12 @@ int main(int argc, char *argv[])
             char textCh[2048]= {0};
             char imageCh[2048] = {0};
             pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示文件-SM- (9).ppt", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
-            qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
+            //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
         } else {
-            qDebug() << "函数加载失败:" << lib.errorString();
+            //qDebug() << "函数加载失败:" << lib.errorString();
         }
     } else {
-        qDebug() << "库加载失败:" << lib.errorString();
+        //qDebug() << "库加载失败:" << lib.errorString();
     }
 
 return 0;

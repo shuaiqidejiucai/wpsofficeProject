@@ -1,4 +1,5 @@
 TEMPLATE = lib
+include(../../common.pri)
 CONFIG += staticlib
 # GLIBINCLUDEPATH=/usr/include/glib-2.0/
 CONFIG += c++11

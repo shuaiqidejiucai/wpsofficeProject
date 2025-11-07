@@ -1,4 +1,4 @@
-include(../../../common.pri)
+
 include(../publicArgs.pri)
 
 DEFINES += HAVE_STRERROR HAVE_STDARG_H

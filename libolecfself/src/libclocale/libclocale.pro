@@ -1,4 +1,3 @@
-include(../../../common.pri)
 include(../publicArgs.pri)
 
 DEFINES += HAVE_LOCALE_H HAVE_LOCAL_LIBCLOCALE

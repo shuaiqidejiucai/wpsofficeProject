@@ -38,7 +38,7 @@ bool WppComment::initWPPRpcClient()
     HRESULT hr = createWppRpcInstance(&m_rpcClient);
     if (hr != S_OK)
     {
-        qDebug() <<"get WpsRpcClient erro";
+        //qDebug() <<"get WpsRpcClient erro";
         return false;
     }
 
@@ -69,12 +69,12 @@ bool WppComment::openWPPDoc(const QString &fileName)
     if (SUCCEEDED(hr))
     {
         m_spPresentation = spPresentation;
-        qDebug() << "open ok";
+        //qDebug() << "open ok";
         return true;
     }
     else
     {
-        qDebug() << "open fail";
+        //qDebug() << "open fail";
     }
 
     return false;
@@ -104,7 +104,7 @@ QStringList WppComment::GetWPPText()
             BSTR  textPtr4;
             textRangePtr->get_Text(&textPtr4);
             QString qsStr = GetBSTRText(textPtr4);
-            qDebug()<<"text:"<<qsStr;
+            //qDebug()<<"text:"<<qsStr;
             if(!qsStr.isEmpty())
             {
                 qsStrList.append(qsStr);
@@ -270,6 +270,89 @@ void WppComment::extractPicture(GetNextOleDataFun imageFunPtr)
     extractFile(ImageType, imageFunPtr);
 }
 
+void WppComment::extractPictureNomemery(const QString &qsImageDir)
+{
+    if(!m_spPresentation || qsImageDir.isEmpty())
+    {
+        return;
+    }
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return;
+    }
+
+    QList<ks_stdptr<Shape>> shapeList;
+    ks_stdptr<Shapes> belongShapesPtr;
+    long count = 0;
+    slidesPtr->get_Count(&count);
+    long slidRangeCount = 0;
+    slidesPtr->get_Count(&slidRangeCount);
+    for(long i = 1; i <= slidRangeCount; ++i)
+    {
+        VARIANT rangeIndex;
+        VariantInit(&rangeIndex);
+        V_VT(&rangeIndex) = VT_I4;
+        V_I4(&rangeIndex) = i;
+
+        ks_stdptr<SlideRange> range;
+        slidesPtr->Range(rangeIndex, &range);
+        if(!range)
+        {
+            continue;
+        }
+        ks_stdptr<Shapes> shapesPtr;
+        range->get_Shapes(&shapesPtr);
+        if(!shapesPtr)
+        {
+            continue;
+        }
+        belongShapesPtr = shapesPtr;
+        int shapeCount = 0;
+        shapesPtr->get_Count(&shapeCount);
+        for(int j = 1; j <= shapeCount; ++j)
+        {
+            VARIANT shapeIndex;
+            VariantInit(&shapeIndex);
+            V_VT(&shapeIndex) = VT_I4;
+            V_I4(&shapeIndex) = j;
+
+            ks_stdptr<Shape> shapePtr;
+            shapesPtr->Item(shapeIndex, &shapePtr);
+            MsoShapeType tmpShapgeType;
+            shapePtr->get_Type(&tmpShapgeType);
+
+            //if(tmpShapgeType == msoGroup)
+            //{
+                //ks_stdptr<ShapeRange> shapeRangePtr;
+                //shapePtr->Ungroup(&shapeRangePtr);
+                //long llcount = 0;
+                //shapeRangePtr->get_Count(&llcount);
+                //shapesPtr->get_Count(&shapeCount);
+                //j--;
+                //continue;
+            //}
+
+            QList<kfc::ks_stdptr<wppapi::Shape>> tmpShapeList = GetShapeGroupList(shapePtr, ImageType);
+            shapeList.append(tmpShapeList);
+        }
+    }
+
+    for(int i = 0; i < shapeList.count(); ++i)
+    {
+        ks_stdptr<Shape> shapePtr = shapeList.at(i);
+        QString outPAth = QString(qsImageDir + "/image" + QString::number(i) /*+ ".png"*/);
+        ks_bstr filePathBstr (outPAth.utf16());
+        HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatJPG);
+        if(SUCCEEDED(opHr))
+        {
+            qDebug()<<"export successful";
+        }
+    }
+    return;
+}
+
 void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
 {
     if(!m_spPresentation || !fileFunPtr)
@@ -323,16 +406,16 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
             MsoShapeType tmpShapgeType;
             shapePtr->get_Type(&tmpShapgeType);
 
-            if(tmpShapgeType == msoGroup)
-            {
-                ks_stdptr<ShapeRange> shapeRangePtr;
-                shapePtr->Ungroup(&shapeRangePtr);
-                long llcount = 0;
-                shapeRangePtr->get_Count(&llcount);
-                shapesPtr->get_Count(&shapeCount);
-                j--;
-                continue;
-            }
+//            if(tmpShapgeType == msoGroup)
+//            {
+//                ks_stdptr<ShapeRange> shapeRangePtr;
+//                shapePtr->Ungroup(&shapeRangePtr);
+//                long llcount = 0;
+//                shapeRangePtr->get_Count(&llcount);
+//                shapesPtr->get_Count(&shapeCount);
+//                j--;
+//                continue;
+//            }
 
             QList<kfc::ks_stdptr<wppapi::Shape>> tmpShapeList = GetShapeGroupList(shapePtr, fileType);
             shapeList.append(tmpShapeList);
@@ -353,7 +436,7 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
         }
         else
         {
-            qDebug()<<"UnKnown Type";
+            //qDebug()<<"UnKnown Type";
         }
         if(!isContinue)
         {
@@ -362,7 +445,7 @@ void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)
     }
     return;
 }
-//int pppp = 0;
+int pppp = 0;
 
 bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr, bool &isContinue)
 {
@@ -382,34 +465,37 @@ bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kf
     shapePtr->get_Width(&fwidth);
     shapePtr->get_Height(&fheight);
 
-    // ks_bstr filePathBstr (QString("/mnt/hgfs/vmshare/dps-ppt/" + QString::number(pppp) + "ceshi.png").utf16());
-    // pppp++;
-    // HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatPNG);
-    // if(SUCCEEDED(opHr))
-    // {
-    //     qDebug()<<"success;";
-    // }
-    // else {
-    //     qDebug()<<"faile;";
-    // }
+     ks_bstr filePathBstr (QString("/home/ft2000/mjcenv/dps-ppt/outImage/" + QString::number(pppp) + "ceshi.png").utf16());
+     pppp++;
+     HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatPNG);
+     if(SUCCEEDED(opHr))
+     {
+         qDebug()<<"success;";
+     }
+     else {
+
+         qDebug()<<"faile;";
+     }
     // isContinue = true;
     // return false;
     //MsoAutoShapeType autoShapeType;
     //shapePtr->get_AutoShapeType()
-    shapePtr->Copy();
+    //shapePtr->Copy();
    // const QMimeData * tmpMimeData = qApp->clipboard()->mimeData();
     //tmpShapePtr->Delete();
     // QStringList formatList =  qApp->clipboard()->mimeData()->formats();
     // if(formatList.indexOf("image/png") != -1)
     // {
-    //     qDebug()<<"shape;";
+    //     //qDebug()<<"shape;";
     // }
     // for(int i = 0; i < formatList.count(); ++i)
     // {
     //     QString qsFormat = formatList.at(i);
     //     QByteArray datda = tmpMimeData->data(qsFormat);
-    //     qDebug()<<"data size:" << datda.size();
+    //     //qDebug()<<"data size:" << datda.size();
     // }
+    isContinue = true;
+    return true;
     QImage image = qApp->clipboard()->image();
     if(image.isNull())
     {
@@ -475,7 +561,7 @@ bool WppComment::getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kf
     }
     else
     {
-        qDebug()<<"Unknown Type";
+        //qDebug()<<"Unknown Type";
     }
     return result;
 }
@@ -562,7 +648,7 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
             }
             else
             {
-                qDebug()<<"No Operate Type";
+                //qDebug()<<"No Operate Type";
             }
         }
     }
@@ -707,7 +793,7 @@ QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppap
             }
             else
             {
-                qDebug()<<"shape type:"<<shapeType;
+                //qDebug()<<"shape type:"<<shapeType;
             }
         }
     }

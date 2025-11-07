@@ -19,7 +19,7 @@ contains(QMAKE_CC, gcc){
 COMPILENAME=gcc
 }
 
-
+#release:DEFINES+=QT_NO_DEBUG_OUTPUT
 OBJECTS_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/obj
 MOC_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/moc
 UI_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/ui

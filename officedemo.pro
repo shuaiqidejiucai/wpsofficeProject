@@ -99,7 +99,7 @@ LIBS += -L"$$LIBDIR/libcfile" -llibcfile
 LIBS += -L"$$LIBDIR/libcsplit" -llibcsplit
 LIBS += -L"$$LIBDIR/libcerror" -llibcerror
 
-
+#IBS += -L"/home/ft2000/mjcenv/projectSpace/wpsofficeGita/build/clang/debug/wpsDemo/imageformats" -lqjpeg
 # win32 {
 #     QMAKE_PRE_LINK += copy /Y $$PWD/lib/source.txt $$PWD/lib//libquazipSelf.txt
 # } else:unix {

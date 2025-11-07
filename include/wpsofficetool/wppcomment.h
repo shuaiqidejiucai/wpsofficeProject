@@ -43,6 +43,8 @@ public:
     void getOleFileData(GetNextOleDataFun oleDataPtr);
 
     void extractPicture(GetNextOleDataFun imageFunPtr);
+
+    void extractPictureNomemery(const QString& qsImageDir);
 private:
     void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);
 

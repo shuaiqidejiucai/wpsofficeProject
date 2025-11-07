@@ -31,7 +31,7 @@ bool EtComment::initEtRpcClient()
     HRESULT hr = createEtRpcInstance(&m_pEtRpcClient);
     if (hr != S_OK)
     {
-        qDebug() <<"get ETRpcClient erro";
+        //qDebug() <<"get ETRpcClient erro";
         return false;
     }
 
@@ -247,7 +247,7 @@ void EtComment::extractFile(long sheetIndex,EU_FileType fileType, GetNextOleData
         }
         else
         {
-            qDebug()<<"Unknown Type";
+            //qDebug()<<"Unknown Type";
         }
     }
 }
@@ -379,7 +379,7 @@ bool EtComment::getPictureForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr, kfc
     }
     else
     {
-        qDebug()<<"Unknown Type";
+        //qDebug()<<"Unknown Type";
     }
     return result;
 }
@@ -513,7 +513,7 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
             }
             else
             {
-                qDebug()<<"No Operate Type";
+                //qDebug()<<"No Operate Type";
             }
         }
     }
