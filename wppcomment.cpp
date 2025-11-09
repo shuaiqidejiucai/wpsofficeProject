@@ -342,7 +342,7 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
     for(int i = 0; i < shapeList.count(); ++i)
     {
         ks_stdptr<Shape> shapePtr = shapeList.at(i);
-        QString outPAth = QString(qsImageDir + "/image" + QString::number(i) /*+ ".png"*/);
+        QString outPAth = QString(qsImageDir + "/" + QString::number(i) + ".png");
         ks_bstr filePathBstr (outPAth.utf16());
         HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatJPG);
         if(SUCCEEDED(opHr))
