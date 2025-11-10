@@ -25,10 +25,10 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
         file.close();
         gloabalIndex++;
     }
-//    QImage image = QImage::fromData(ba);
-//    QLabel *label = new QLabel;
-//    label->setPixmap(QPixmap::fromImage(image));
-//    label->show();
+    //    QImage image = QImage::fromData(ba);
+    //    QLabel *label = new QLabel;
+    //    label->setPixmap(QPixmap::fromImage(image));
+    //    label->show();
     return true;
 }
 
@@ -62,28 +62,48 @@ int main(int argc, char *argv[])
 {
     //QApplication a(argc, argv);
 
-    typedef void (*fun_singlefile)(const char*, const char*, char*, char*);
+    typedef void (*initWPP)(WPPHANDLE*);
+    typedef void (*closeWPP)(WPPHANDLE);
+    typedef int (*extractImageAndeText)(const char*, const char*, char*, char*,WPPHANDLE);
     QString qsLibPath;
 #ifdef PPTCFUNLIBPATH
     qsLibPath = QString(PPTCFUNLIBPATH) + "/pptcfunoutout";
 #endif
+    killWppProcess();
     QLibrary lib(qsLibPath);
-    if (lib.load()) {
-        fun_singlefile pptCFunOutput = (fun_singlefile)lib.resolve("fun_singlefile");
-        if (pptCFunOutput) {
-            char textCh[2048]= {0};
-            char imageCh[2048] = {0};
-            killWppProcess();
-            pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示-SM- (12).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
-            //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
-        } else {
-            //qDebug() << "函数加载失败:" << lib.errorString();
+    if (lib.load())
+    {
+        initWPP initWPPFun = (initWPP)lib.resolve("initWPP");
+        if (initWPPFun)
+        {
+
+            WPPHANDLE wppObj = nullptr;
+            initWPPFun(&wppObj);
+
+            extractImageAndeText pptCFunOutput = (extractImageAndeText)lib.resolve("extractImageAndeText");
+            if (pptCFunOutput)
+            {
+                QElapsedTimer time;
+                time.start();
+                for(int i = 0; i < 1; ++i)
+                {
+                    qDebug()<<"outIndex====================:"<<QString::number(i);
+                    char textCh[2048]= {0};
+                    char imageCh[2048] = {0};
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示-SM- (12).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh, wppObj);
+                }
+                qint64 userd = time.elapsed();
+                qDebug()<<"run time:<<<<" << userd<<" ms";
+            }
+
+            closeWPP closeWPPFun = (closeWPP)lib.resolve("closeWPP");
+            if(closeWPPFun)
+            {
+                closeWPPFun(wppObj);
+            }
+
         }
-    } else {
-        //qDebug() << "库加载失败:" << lib.errorString();
+        //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
     }
-
-return 0;
-
-
+    return 0;
 }

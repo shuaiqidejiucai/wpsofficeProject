@@ -72,7 +72,6 @@ int main(int argc, char *argv[])
         filterStrList.append("*.pptx");
 
         QFileInfoList wppFileInfoList = dir.entryInfoList(filterStrList ,QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-
         for(int i = 0; i < wppFileInfoList.count(); ++i)
         {
             QFileInfo fileInfo = wppFileInfoList.at(i);
@@ -94,6 +93,7 @@ int main(int argc, char *argv[])
             }
 
             wpp.openWPPDoc(qsAbsoluteFilePath);
+
             //wpp.GetBeiZhu();
 //            QStringList qsTextList = wpp.GetWPPText();
 //            QFile file(destPath + "/content" + ".txt");
@@ -104,15 +104,13 @@ int main(int argc, char *argv[])
 //                file.close();
 //            }
 //            tmpAllPath = destPath + "/content";
-            qDebug()<<"outImage:"<<destPath;
-            QElapsedTimer time;
-            time.start();
+
             wpp.extractPictureNomemery(destPath);
-            qint64 userd = time.elapsed();
-            qDebug()<<"run time:<<<<" << userd<<" ms";
+
             //wpp.extractPicture(TestPicture);
             gloabalIndex = 0;
             wpp.closeWPPDoc();
+
 
         }
         wpp.closeApp();
