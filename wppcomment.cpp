@@ -214,6 +214,25 @@ QList<kfc::ks_stdptr<wppapi::TextRange>> WppComment::getRearks(long pageIndex)
     return qsRearkRangeList;
 }
 
+QStringList WppComment::getRearksText()
+{
+    QStringList rearlksStringList;
+    int count = getPageCount();
+    for(int i = 1; i <= count; ++i)
+    {
+         QList<ks_stdptr<TextRange>> qsRearkRangeList = getRearks(i);
+         for(int j = 0; j < qsRearkRangeList.count(); ++j)
+         {
+             ks_stdptr<TextRange> textRangePtr = qsRearkRangeList.at(j);
+             BSTR bText;
+             textRangePtr->get_Text(&bText);
+             QString qsStr = GetBSTRText(bText);
+             rearlksStringList.append(qsStr);
+         }
+    }
+    return rearlksStringList;
+}
+
 void WppComment::replaceTextForWPPDoc(const QString &findText, const QString &replaceText)
 {
     QList<ks_stdptr<TextRange>> textRangList = GetTextRange();
@@ -344,10 +363,10 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
         ks_stdptr<Shape> shapePtr = shapeList.at(i);
         QString outPAth = QString(qsImageDir + "/" + QString::number(i) + ".png");
         ks_bstr filePathBstr (outPAth.utf16());
-        HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatJPG);
+        HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatPNG);
         if(SUCCEEDED(opHr))
         {
-            qDebug()<<"export successful";
+            //qDebug()<<"export successful";
         }
     }
     return;

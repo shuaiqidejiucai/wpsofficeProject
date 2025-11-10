@@ -28,10 +28,10 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
         file.close();
         gloabalIndex++;
     }
-//    QImage image = QImage::fromData(ba);
-//    QLabel *label = new QLabel;
-//    label->setPixmap(QPixmap::fromImage(image));
-//    label->show();
+    //    QImage image = QImage::fromData(ba);
+    //    QLabel *label = new QLabel;
+    //    label->setPixmap(QPixmap::fromImage(image));
+    //    label->show();
     return true;
 }
 
@@ -163,7 +163,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext& context, const QS
 
 int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir)
 {
-//    //qInstallMessageHandler(myMessageOutput);
+    //    //qInstallMessageHandler(myMessageOutput);
     QString qsInputfilepath = QString::fromUtf8(inputfilepath);
     QFileInfo inputPathInfo(qsInputfilepath);
     QStringList filterStrList;
@@ -207,10 +207,9 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
     {
         qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
     }
-
     QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
     QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
-    QString qsFileImageOutDir = qsRootpath + "/outImage/" + "testFile"; //inputPathInfo.fileName();
+    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
     //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
     tmpImagePath = qsFileImageOutDir + "/";
 
@@ -246,7 +245,6 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
     memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
     memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
 
-
     static QGuiApplication* app = nullptr;
     static int argc = 0;
     static char* argv[] = {nullptr};
@@ -263,42 +261,208 @@ int fun_singlefile(const char *inputfilepath, const char *rootpath, char *outfil
     wpp.initWPPRpcClient();
     wpp.initWppApplication();
 
-
-    if(wpp.openWPPDoc(qsInputfilepath))
-    {
-
-        //qDebug()<<"file open successful";
-
-        QStringList qsTextList = wpp.GetWPPText();
-        QFile file(qsFileTextOutFile);
-        if(file.open(QIODevice::WriteOnly))
+//    QElapsedTimer time;
+//    time.start();
+//    for(int i = 0; i < 1500; ++i)
+//    {
+       // qDebug()<< "outPut==================:"<<QString::number(i);
+        if(wpp.openWPPDoc(qsInputfilepath))
         {
-            QString qsText = qsTextList.join("\r\n");
-            file.write(qsText.toUtf8());
-            file.close();
+            //qDebug()<<"file open successful";
+            QStringList qsTextList = wpp.GetWPPText();
+            QStringList qsrearksStringList = wpp.getRearksText();
+
+            QFile file(qsFileTextOutFile);
+            if(file.open(QIODevice::WriteOnly))
+            {
+                QString qsText = qsTextList.join("\r\n");
+                QString qsTextReark = qsrearksStringList.join("\r\n");
+                qsText = qsText + qsTextReark;
+                file.write(qsText.toUtf8());
+                file.close();
+            }
+
+            gloabalIndex = 0;
+
+            wpp.extractPictureNomemery(qsFileImageOutDir);
+            //wpp.extractPicture(TestPicture);
+            wpp.closeWPPDoc();
         }
+        else
+        {
+            qFatal("file open fatal");
+        }
+//    }
 
-        gloabalIndex = 0;
-        QElapsedTimer time;
-        time.start();
-        //wpp.extractPictureNomemery(qsFileImageOutDir);
-        wpp.extractPicture(TestPicture);
-        qint64 userd = time.elapsed();
-        qDebug()<<"run time:<<<<" << userd<<" ms";
-        wpp.closeWPPDoc();
-    }
-    else
-    {
-        qFatal("file open fatal");
-    }
-
+//    qint64 userd = time.elapsed();
+//    qDebug()<<"run time:<<<<" << userd<<" ms";
     wpp.closeApp();
 
     //qint64 userd = time.elapsed();
-   // qDebug()<<"run time:<<<<" << userd<<" ms";
+    // qDebug()<<"run time:<<<<" << userd<<" ms";
     if(isNeedFreeAppplication)
     {
         app->deleteLater();
     }
     return 0;
+}
+
+void initWPP(WPPHANDLE& wppObj)
+{
+    WppComment *wpp =new WppComment;
+    wpp->initWPPRpcClient();
+    wpp->initWppApplication();
+    wppObj = &wpp;
+}
+
+void closeWPP(WPPHANDLE wppObj)
+{
+    if(wppObj)
+    {
+        WppComment *wpp = (WppComment*)wppObj;
+        wpp->closeApp();
+        delete wpp;
+    }
+}
+
+int initExtractFloder(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir)
+{
+    QString qsInputfilepath = QString::fromUtf8(inputfilepath);
+    QFileInfo inputPathInfo(qsInputfilepath);
+    if(!inputPathInfo.exists())
+    {
+        //qDebug()<<"file is No exists";
+        return 0;
+    }
+    if(!outfilepath)
+    {
+        return 0;
+    }
+    if(!imagedir)
+    {
+        return 0;
+    }
+    QString qsRootpath = QString::fromUtf8(rootpath);
+    QDir dir(qsRootpath);
+    if(!dir.exists())
+    {
+        //qDebug()<<"floder no exists try create floder";
+        bool isSuccessful = dir.mkpath(qsRootpath);
+        if(!isSuccessful)
+        {
+            //qDebug()<<"create failed";
+            return 0;
+        }
+    }
+    if(qsRootpath.right(1) == "/")
+    {
+        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
+    }
+    QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
+    QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
+    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+    //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+
+    QDir fileTextOutDir(qsFileTextOutDir);
+    if(fileTextOutDir.exists())
+    {
+        //qDebug()<<qsFileTextOutDir<<": existed ready delete";
+        if(!fileTextOutDir.removeRecursively())
+        {
+            //qDebug()<<qsFileTextOutDir<<": delete failed";
+            return 0;
+        }
+        else
+        {
+            //qDebug()<<qsFileTextOutDir<<": delete successful";
+        }
+    }
+
+    if(!fileTextOutDir.mkpath(qsFileTextOutDir))
+    {
+        //qDebug()<<qsFileTextOutDir<<": create failed";
+        return 0;
+    }
+
+    //qDebug()<<qsFileTextOutDir<<": create successful";
+    QDir fileImageOutDir(qsFileImageOutDir);
+    if(fileImageOutDir.exists())
+    {
+        //qDebug()<<qsFileImageOutDir<<": existed ready delete";
+        if(!fileImageOutDir.removeRecursively())
+        {
+            //qDebug()<<qsFileImageOutDir<<": delete failed";
+            return 0;
+        }
+        else
+        {
+            //qDebug()<<qsFileImageOutDir<<": delete successful";
+        }
+    }
+    if(!fileImageOutDir.mkpath(qsFileImageOutDir))
+    {
+        return 0;
+        //qDebug()<<qsFileImageOutDir<<": create failed";
+    }
+
+    //qDebug()<<qsFileImageOutDir<<": create successful";
+
+    memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
+    memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
+    return 1;
+}
+
+int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir, WPPHANDLE wppObj)
+{
+    if(!wppObj)
+    {
+        return 0;
+    }
+    QString qsInputfilepath = QString::fromUtf8(inputfilepath);
+    QFileInfo inputPathInfo(qsInputfilepath);
+    QStringList filterStrList;
+    filterStrList.append("dps");
+    filterStrList.append("ppt");
+    filterStrList.append("pptx");
+
+    if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
+    {
+        //qDebug()<<inputPathInfo.suffix();
+        //qDebug()<<"file type is error";
+        return 0;
+    }
+
+    int result = initExtractFloder(inputfilepath, rootpath, outfilepath, imagedir);
+    if(result == 0)
+    {
+        return 0;
+    }
+    WppComment* wpp = (WppComment*)wppObj;
+    if(wpp->openWPPDoc(qsInputfilepath))
+    {
+        //qDebug()<<"file open successful";
+        QStringList qsTextList = wpp->GetWPPText();
+        QStringList qsrearksStringList = wpp->getRearksText();
+
+        QString qsFileTextOutFile = QString::fromUtf8(outfilepath);
+        QFile file(qsFileTextOutFile);
+        if(file.open(QIODevice::WriteOnly))
+        {
+            QString qsText = qsTextList.join("\r\n");
+            QString qsTextReark = qsrearksStringList.join("\r\n");
+            qsText = qsText + qsTextReark;
+            file.write(qsText.toUtf8());
+            file.close();
+        }
+
+        QString qsFileImageOutDir = QString::fromUtf8(imagedir);
+        wpp->extractPictureNomemery(qsFileImageOutDir);
+        //wpp.extractPicture(TestPicture);
+        wpp->closeWPPDoc();
+    }
+    else
+    {
+        qFatal("file open fatal");
+    }
+    return 1;
 }

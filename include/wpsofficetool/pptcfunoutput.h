@@ -6,6 +6,10 @@
 extern "C" {
 #endif
 
+typedef void*  WPPHANDLE ;
+
+void InitWPP(WPPHANDLE &wppObj);
+
 void pptCFunOutput(const char* inputPPTFileDir, const char* outputPPTFileDir);
 
 // 入参 char *inputfilepath 输入文件的绝对路径

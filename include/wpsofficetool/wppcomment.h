@@ -36,6 +36,8 @@ public:
 
     QList<kfc::ks_stdptr<wppapi::TextRange>> getRearks(long pageIndex);
 
+    QStringList getRearksText();
+
     void replaceTextForWPPDoc(const QString& findText, const QString& replaceText);
 
     bool insertTextForTextRange(kfc::ks_stdptr<wppapi::TextRange> range, int start, int length, const QString& qsTexts, bool after = true);

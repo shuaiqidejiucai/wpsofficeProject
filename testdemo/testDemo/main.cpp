@@ -73,7 +73,8 @@ int main(int argc, char *argv[])
         if (pptCFunOutput) {
             char textCh[2048]= {0};
             char imageCh[2048] = {0};
-            pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示文件-SM- (9).ppt", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
+            killWppProcess();
+            pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示-SM- (12).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh);
             //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
         } else {
             //qDebug() << "函数加载失败:" << lib.errorString();
@@ -83,5 +84,6 @@ int main(int argc, char *argv[])
     }
 
 return 0;
+
 
 }
