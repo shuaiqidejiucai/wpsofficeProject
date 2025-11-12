@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     char textCh[2048]= {0};
                     char imageCh[2048] = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/演示-SM- (12).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh, wppObj);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/演示文件-SM- (7).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh, wppObj);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";

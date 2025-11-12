@@ -315,10 +315,20 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext& context, const QS
 //}
 
 bool isNeedFreeAppplication = false;
-static QGuiApplication* app = nullptr;
+static QApplication* app = nullptr;
 
 void initWPP(WPPHANDLE *wppObj)
 {
+    static int argc = 0;
+    static char* argv[] = {nullptr};
+
+
+    if (!QApplication::instance())
+    {
+        // 第一次调用时自动创建 QGuiApplication
+        app = new QApplication(argc, argv);
+        isNeedFreeAppplication = true;
+    }
     WppComment *wpp =new WppComment;
     wpp->initWPPRpcClient();
     wpp->initWppApplication();
@@ -342,16 +352,7 @@ void initWPP(WPPHANDLE *wppObj)
     spdlog::flush_every(std::chrono::seconds(3));
     spdlog::set_level(spdlog::level::trace);
 
-    static int argc = 0;
-    static char* argv[] = {nullptr};
 
-
-    if (!QCoreApplication::instance())
-    {
-        // 第一次调用时自动创建 QGuiApplication
-        app = new QGuiApplication(argc, argv);
-        isNeedFreeAppplication = true;
-    }
 }
 
 void closeWPP(WPPHANDLE wppObj)
@@ -508,13 +509,15 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
         //qDebug()<<"file open successful";
         QStringList qsTextList = wpp->GetWPPText();
         QStringList qsrearksStringList = wpp->getRearksText();
+        QStringList qsMasterList = wpp->getMasterText();
         QString qsFileTextOutFile = QString::fromUtf8(outfilepath);
         QFile file(qsFileTextOutFile);
         if(file.open(QIODevice::WriteOnly))
         {
             QString qsText = qsTextList.join("\r\n");
             QString qsTextReark = qsrearksStringList.join("\r\n");
-            qsText = qsText + qsTextReark;
+            QString qsMaterText = qsMasterList.join("\r\n");
+            qsText = qsText + qsTextReark + qsMaterText;
             file.write(qsText.toUtf8());
             file.close();
             SPDLOG_INFO(QString(qsFileTextOutFile + ":text exported").toUtf8().data());

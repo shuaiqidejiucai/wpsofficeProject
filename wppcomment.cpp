@@ -16,7 +16,7 @@ using namespace wpsapiex;
 
 extern QString GetBSTRText(BSTR str);
 WppComment::WppComment(QObject *parent)
-    : QObject{parent},m_rpcClient(nullptr)
+    : QObject{parent},m_rpcClient(nullptr),m_containWidget(nullptr)
 {}
 
 
@@ -46,15 +46,23 @@ bool WppComment::initWPPRpcClient()
     m_rpcClient->setProcessPath(StrWpsAddress);
     SysFreeString(StrWpsAddress);
 
+   m_containWidget = new QWidget;
+   m_containWidget->setFixedSize(200,100);
+   m_containWidget->show();
     QVector<BSTR> vArgs;
-    vArgs.resize(2);
+    vArgs.resize(6);
     vArgs[0] =  SysAllocString(__X("-shield"));
     vArgs[1] =  SysAllocString(__X("-multiply"));
+    vArgs[2] =  SysAllocString(__X("-x11embed"));
+    vArgs[3] =  SysAllocString(QString::number(m_containWidget->winId()).utf16());
+    vArgs[4] =  SysAllocString(QString::number(m_containWidget->width()).utf16());
+    vArgs[5] =  SysAllocString(QString::number(m_containWidget->height()).utf16());
     m_rpcClient->setProcessArgs(vArgs.size(), vArgs.data());
     for (int i = 0; i < vArgs.size(); i++)
     {
         SysFreeString(vArgs.at(i));
     }
+    m_containWidget->hide();
     return true;
 }
 
@@ -214,6 +222,84 @@ QList<kfc::ks_stdptr<wppapi::TextRange>> WppComment::getRearks(long pageIndex)
     return qsRearkRangeList;
 }
 
+QList<kfc::ks_stdptr<TextRange> > WppComment::getMaster()
+{
+
+    QList<ks_stdptr<TextRange>> textRangeList;
+    if(!m_spPresentation)
+    {
+        return textRangeList;
+    }
+    ks_stdptr<_Master> sliderMaster;
+    m_spPresentation->get_SlideMaster(&sliderMaster);
+    if(sliderMaster)
+    {
+        ks_stdptr<Shapes> shapesPtr;
+        sliderMaster->get_Shapes(&shapesPtr);
+        if(!shapesPtr)
+        {
+            return textRangeList;
+        }
+        int shapeCount = 0;
+        shapesPtr->get_Count(&shapeCount);
+        for(int q = 1; q <= shapeCount + 1; ++q)
+        {
+            VARIANT shapeIndex;
+            VariantInit(&shapeIndex);
+            V_VT(&shapeIndex) = VT_I4;
+            V_I4(&shapeIndex) = q;
+            ks_stdptr<Shape> shapePtr;
+            shapesPtr->Item(shapeIndex, &shapePtr);
+            if(!shapePtr)
+            {
+                continue;
+            }
+
+            QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+            for(int i = 0; i < shapePtrList.count(); ++i)
+            {
+                ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                ks_stdptr<TextFrame> textFramePtr;
+                tmpShape->get_TextFrame(&textFramePtr);
+                if(!textFramePtr)
+                {
+                    continue;
+                }
+                ks_stdptr<TextRange> textRangePtr;
+                textFramePtr->get_TextRange(&textRangePtr);
+                if(textRangePtr)
+                {
+                    textRangeList.append(textRangePtr);
+                }
+            }
+        }
+
+    }
+
+    return textRangeList;
+
+}
+
+QStringList WppComment::getMasterText()
+{
+    QList<ks_stdptr<TextRange>> masterRangeList = getMaster();
+    return TextRnageToQString(masterRangeList);
+}
+
+QStringList WppComment::TextRnageToQString(QList<kfc::ks_stdptr<wppapi::TextRange>> textRangePtrList)
+{
+    QStringList qsTextList;
+    for(int j = 0; j < textRangePtrList.count(); ++j)
+    {
+        ks_stdptr<TextRange> textRangePtr = textRangePtrList.at(j);
+        BSTR bText;
+        textRangePtr->get_Text(&bText);
+        QString qsStr = GetBSTRText(bText);
+        qsTextList.append(qsStr);
+    }
+    return qsTextList;
+}
+
 QStringList WppComment::getRearksText()
 {
     QStringList rearlksStringList;
@@ -221,14 +307,7 @@ QStringList WppComment::getRearksText()
     for(int i = 1; i <= count; ++i)
     {
          QList<ks_stdptr<TextRange>> qsRearkRangeList = getRearks(i);
-         for(int j = 0; j < qsRearkRangeList.count(); ++j)
-         {
-             ks_stdptr<TextRange> textRangePtr = qsRearkRangeList.at(j);
-             BSTR bText;
-             textRangePtr->get_Text(&bText);
-             QString qsStr = GetBSTRText(bText);
-             rearlksStringList.append(qsStr);
-         }
+         rearlksStringList.append(TextRnageToQString(qsRearkRangeList));
     }
     return rearlksStringList;
 }
@@ -756,6 +835,11 @@ void WppComment::closeApp()
         //m_spApplicationEx.clear();
         m_spApplication.clear();
         m_rpcClient = nullptr;
+        if(m_containWidget)
+        {
+            delete m_containWidget;
+            m_containWidget = nullptr;
+        }
     }
 }
 
@@ -781,6 +865,13 @@ QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppap
         {
             MsoShapeType shapeType;
             popShapePtr->get_Type(&shapeType);
+            MsoAutoShapeType autoShapeType;
+            ks_stdptr<FillFormat> format;
+            popShapePtr->get_Fill(&format);
+            MsoFillType fileType;
+            format->get_Type(&fileType);
+            popShapePtr->get_AutoShapeType(&autoShapeType);
+
             if(shapeType == msoGroup)
             {
                 ks_stdptr<ShapeRange> shapeRangePtr;
@@ -803,7 +894,8 @@ QList<kfc::ks_stdptr<Shape> > WppComment::GetShapeGroupList(kfc::ks_stdptr<wppap
                 }
                 continue;
             }
-            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture || shapeType == msoAutoShape);
+
+            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture || (shapeType == msoAutoShape && (fileType == msoFillPicture || fileType == msoFillPatterned)));
             bool isOleFile = fileterFileType == OleFileType && (shapeType == msoEmbeddedOLEObject || shapeType == msoLinkedOLEObject);
             bool isAllfileType = fileterFileType == AllFileType;
             if(isImage || isOleFile || isAllfileType)

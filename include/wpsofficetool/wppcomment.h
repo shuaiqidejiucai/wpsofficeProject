@@ -36,6 +36,10 @@ public:
 
     QList<kfc::ks_stdptr<wppapi::TextRange>> getRearks(long pageIndex);
 
+    QList<kfc::ks_stdptr<wppapi::TextRange>> getMaster();
+
+    QStringList getMasterText();
+
     QStringList getRearksText();
 
     void replaceTextForWPPDoc(const QString& findText, const QString& replaceText);
@@ -59,7 +63,9 @@ private:
     kfc::ks_stdptr<wppapi::_Application> m_spApplication;
     kfc::ks_stdptr<wppapi::Presentations> m_spDocs;
     kfc::ks_stdptr<wppapi::_Presentation> m_spPresentation;
+    QWidget * m_containWidget;
     //kfc::ks_stdptr<wpsapiex::_ApplicationEx> m_spApplicationEx;
+    QStringList TextRnageToQString(QList<kfc::ks_stdptr<wppapi::TextRange>> textRangePtrList);
 };
 
 #endif // WPPCOMMENT_H
