@@ -323,7 +323,7 @@ void initWPP(WPPHANDLE *wppObj)
     wpp->initWPPRpcClient();
     wpp->initWppApplication();
     *wppObj = wpp;
-    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt("com_loger", "/home/ft2000/hmg0815/app.log", 1048576 *5 , 3);
+    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt("com_loger", "logs/app.log", 1048576 *5 , 3);
 //    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 //    std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("/home/ft2000/hmg0815/app.log", 1048576 * 5, 3);
 
