@@ -58,6 +58,9 @@ INCLUDEPATH += $$PWD/qunzip/include
 LIBS += -L"$$LIBDIR/quazipSelf" -lquazipSelf
 
 
+INCLUDEPATH += $$PWD/spdlog/include
+LIBS += -L"$$LIBDIR/spdlog" -lspdlog
+
 INCLUDEPATH += $$PWD/libolecfself/include
 INCLUDEPATH += $$PWD/libolecfself/include/common
 INCLUDEPATH += $$PWD/libolecfself/include/libbfio

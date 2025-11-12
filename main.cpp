@@ -52,12 +52,27 @@ void killWppProcess()
         }
     }
 }
-
-#include "pptcfunoutput.h"
-#include <QLibrary>
+#include <spdlog/spdlog.h>
+#include <spdlog/async.h>
+#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include <spdlog/logger.h>
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt("com_loger", "logs/app.log", 1048576 *5 , 3);
+
+loger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%# %!] %v");
+    spdlog::set_default_logger(loger);
+//spdlog::set_level(spdlog::level::info);
+spdlog::set_level(spdlog::level::trace);
+//loger->info("test logh");
+
+SPDLOG_INFO("test logh");
+//loger->flush();
+spdlog::flush_every(std::chrono::seconds(3));
+spdlog::shutdown();
+
     QDir dir("/home/ft2000/mjcenv/dps-ppt");
 
     if(dir.exists())

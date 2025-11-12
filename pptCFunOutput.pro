@@ -67,6 +67,7 @@ INCLUDEPATH += $$PWD/libolecfself/include/libcdata
 INCLUDEPATH += $$PWD/libolecfself/include/libcerror
 INCLUDEPATH += $$PWD/libolecfself/include/libolecf
 INCLUDEPATH += $$PWD/libolecfself/src/include/libcpath
+INCLUDEPATH += $$PWD/spdlog/include
 
 #INCLUDEPATH += $$INCLUDEDIR/common
 #INCLUDEPATH += $$INCLUDEDIR/libolecf
@@ -86,7 +87,7 @@ INCLUDEPATH += $$PWD/libolecfself/src/include/libcpath
 
 
 
-
+LIBS += -L"$$LIBDIR/spdlog" -lspdlog
 LIBS += -L"$$LIBDIR/quazipSelf" -lquazipSelf
 LIBS += -L"$$LIBDIR/libolecf" -llibolecf
 LIBS += -L"$$LIBDIR/libcdata" -llibcdata
