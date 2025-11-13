@@ -6,9 +6,19 @@
 #include "etcomment.h"
 #include <QDebug>
 #include "utilitytool.h"
+#include <log_global.h>
 #include <QLabel>
 #include <QDir>
 #include <QStack>
+
+#include <QFile>
+#include <QFileInfo>
+#include <QProcess>
+#include <QElapsedTimer>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QSettings>
+
 QString tmpAllPath;
 int gloabalIndex = 0;
 static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
@@ -29,10 +39,6 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
     return true;
 }
 
-#include <QFile>
-#include <QFileInfo>
-#include <QProcess>
-#include <QElapsedTimer>
 // 检查并杀死名为 "wpp" 的进程
 void killWppProcess()
 {
@@ -52,26 +58,220 @@ void killWppProcess()
         }
     }
 }
-#include <spdlog/spdlog.h>
-#include <spdlog/async.h>
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/sinks/rotating_file_sink.h"
-#include <spdlog/logger.h>
+
+
+int initExtractFloder(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir)
+{
+    QString qsInputfilepath = QString::fromUtf8(inputfilepath);
+    QFileInfo inputPathInfo(qsInputfilepath);
+    if(!inputPathInfo.exists())
+    {
+        SPDLOG_ERROR("file is No exists");
+        return 0;
+    }
+    if(!outfilepath)
+    {
+        return 0;
+    }
+    if(!imagedir)
+    {
+
+        return 0;
+    }
+    QString qsRootpath = QString::fromUtf8(rootpath);
+    QDir dir(qsRootpath);
+    if(!dir.exists())
+    {
+        SPDLOG_INFO("floder no exists try create floder");
+        //qDebug()<<"floder no exists try create floder";
+        bool isSuccessful = dir.mkpath(qsRootpath);
+        if(!isSuccessful)
+        {
+            QString qslog = "path:" + qsRootpath +" create failed";
+            //qDebug()<<"create failed";
+            SPDLOG_ERROR(qslog.toUtf8().data());
+            return 0;
+        }
+    }
+
+    if(qsRootpath.right(1) == "/")
+    {
+        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
+    }
+    QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
+    QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
+    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+    //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+
+    QDir fileTextOutDir(qsFileTextOutDir);
+    if(fileTextOutDir.exists())
+    {
+        QString qslog = "path:" + qsFileTextOutDir +" existed ready delete";
+        SPDLOG_INFO(qslog.toUtf8().data());
+        //qDebug()<<qsFileTextOutDir<<": existed ready delete";
+        if(!fileTextOutDir.removeRecursively())
+        {
+            SPDLOG_ERROR("delete failed");
+            //qDebug()<<qsFileTextOutDir<<": delete failed";
+            return 0;
+        }
+        else
+        {
+            SPDLOG_INFO("delete successful");
+            //qDebug()<<qsFileTextOutDir<<": delete successful";
+        }
+    }
+
+    if(!fileTextOutDir.mkpath(qsFileTextOutDir))
+    {
+        QString qslog = "path:" + qsFileTextOutDir +" create failed";
+        SPDLOG_ERROR(qslog.toUtf8().data());
+        //qDebug()<<qsFileTextOutDir<<": create failed";
+        return 0;
+    }
+
+    SPDLOG_INFO(QString("path:" + qsFileTextOutDir +" create successful").toUtf8().data());
+    //qDebug()<<qsFileTextOutDir<<": create successful";
+    QDir fileImageOutDir(qsFileImageOutDir);
+    if(fileImageOutDir.exists())
+    {
+        SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" existed ready delete").toUtf8().data());
+        //qDebug()<<qsFileImageOutDir<<": existed ready delete";
+        if(!fileImageOutDir.removeRecursively())
+        {
+            SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +"  delete failed").toUtf8().data());
+            //qDebug()<<qsFileImageOutDir<<": delete failed";
+            return 0;
+        }
+        else
+        {
+            SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" delete successful").toUtf8().data());
+
+            //qDebug()<<qsFileImageOutDir<<": delete successful";
+        }
+    }
+    if(!fileImageOutDir.mkpath(qsFileImageOutDir))
+    {
+        SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +" create failed").toUtf8().data());
+        return 0;
+        //qDebug()<<qsFileImageOutDir<<": create failed";
+    }
+    SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" create successful").toUtf8().data());
+
+    //qDebug()<<qsFileImageOutDir<<": create successful";
+
+    memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
+    memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
+    return 1;
+}
+
+int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir, WppComment& wpp)
+{
+    QString qsInputfilepath = QString::fromUtf8(inputfilepath);
+    QFileInfo inputPathInfo(qsInputfilepath);
+    QStringList filterStrList;
+    filterStrList.append("dps");
+    filterStrList.append("ppt");
+    filterStrList.append("pptx");
+
+    if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
+    {
+        //qDebug()<<inputPathInfo.suffix();
+        //qDebug()<<"file type is error";
+        SPDLOG_ERROR("file type is error");
+        return 0;
+    }
+    int result = initExtractFloder(inputfilepath, rootpath, outfilepath, imagedir);
+    if(result == 0)
+    {
+        SPDLOG_INFO("floder init failed");
+        return 0;
+    }
+    if(wpp.openWPPDoc(qsInputfilepath))
+    {
+        SPDLOG_INFO(QString("file:" + qsInputfilepath + "open successful").toUtf8().data());
+        //qDebug()<<"file open successful";
+        QStringList qsTextList = wpp.GetWPPText();
+        QStringList qsrearksStringList = wpp.getRearksText();
+        QStringList qsMasterList = wpp.getMasterText();
+        QString qsFileTextOutFile = QString::fromUtf8(outfilepath);
+        QFile file(qsFileTextOutFile);
+        if(file.open(QIODevice::WriteOnly))
+        {
+            QString qsText = qsTextList.join("\r\n");
+            QString qsTextReark = qsrearksStringList.join("\r\n");
+            QString qsMaterText = qsMasterList.join("\r\n");
+            qsText = qsText + qsTextReark + qsMaterText;
+            file.write(qsText.toUtf8());
+            file.close();
+            SPDLOG_INFO(QString(qsFileTextOutFile + ":text exported").toUtf8().data());
+        }
+
+        QString qsFileImageOutDir = QString::fromUtf8(imagedir);
+        wpp.extractPictureNomemery(qsFileImageOutDir);
+        SPDLOG_INFO(QString(qsFileImageOutDir +":image exported").toUtf8().data());
+        //wpp.extractPicture(TestPicture);
+        wpp.closeWPPDoc();
+    }
+    else
+    {
+        SPDLOG_ERROR("file open fatal");
+    }
+    return 1;
+}
+
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt("com_loger", "logs/app.log", 1048576 *5 , 3);
+    QSettings settings("netconfig.ini", QSettings::IniFormat);
+    QString host = settings.value("network/host", "localhost").toString();
+    int port = settings.value("network/port", 12345).toInt();
 
-loger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%# %!] %v");
-    spdlog::set_default_logger(loger);
-//spdlog::set_level(spdlog::level::info);
-spdlog::set_level(spdlog::level::trace);
-//loger->info("test logh");
+    QTcpServer tcpSever;
+   if (tcpSever.listen(QHostAddress::Any, port))
+   {
+       qDebug()<<"connect";
+   }
+    QObject::connect(&tcpSever, &QTcpServer::newConnection, [&](){
+        QTcpSocket *client = tcpSever.nextPendingConnection();
+        QObject::connect(client, &QTcpSocket::readyRead, [client]() {
+            QByteArray data = client->readAll();
+            QString allPath = QString::fromUtf8(data);
+            QStringList textGroupList = allPath.split("||");
+            if(textGroupList.count() == 2)
+            {
+                QString qsInputFilePath = textGroupList.first();
+                QString qsRootpath = textGroupList.last();
+                WppComment wpp;
+                wpp.initWPPRpcClient();
+                wpp.initWppApplication();
+                spdlog::init_thread_pool(8192, 1); // 队列8192条，1个后台线程
+                std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt<spdlog::async_factory>("com_loger", "logs/app.log", 1048576 *5 , 3);
+                spdlog::set_default_logger(loger);
 
-SPDLOG_INFO("test logh");
-//loger->flush();
-spdlog::flush_every(std::chrono::seconds(3));
-spdlog::shutdown();
+                loger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%# %!] %v");
+                spdlog::set_default_logger(loger);
+                //spdlog::set_level(spdlog::level::info);
+                spdlog::flush_every(std::chrono::seconds(3));
+                spdlog::set_level(spdlog::level::trace);
+
+                char textCh[2048]= {0};
+                char imageCh[2048] = {0};
+                extractImageAndeText(qsInputFilePath.toUtf8().constData(), qsRootpath.toUtf8().constData(),textCh, imageCh, wpp);
+
+                QString qsClientPath = QString::fromUtf8(textCh) + "||" + QString::fromUtf8(imageCh);
+                client->write(qsClientPath.toUtf8());
+                client->flush();
+
+                wpp.closeApp();
+                spdlog::shutdown();
+            }
+            //client->write("Echo: " + data); // 回显
+        });
+        QObject::connect(client, &QTcpSocket::disconnected, client, &QTcpSocket::deleteLater);
+    });
+    a.exec();
 
     QDir dir("/home/ft2000/mjcenv/dps-ppt");
 

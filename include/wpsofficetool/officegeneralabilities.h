@@ -6,6 +6,7 @@
 #include "wpsapiex.h"
 #include "utilitytool.h"
 #include <QDebug>
+
 enum EU_FileType
 {
     AllFileType,

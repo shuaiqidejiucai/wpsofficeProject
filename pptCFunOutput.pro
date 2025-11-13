@@ -54,7 +54,8 @@ HEADERS += \
     include/wpsofficetool/pptcfunoutput.h \
     include/wpsofficetool/utilitytool.h \
     include/wpsofficetool/wppcomment.h \
-    include/wpsofficetool/wpscomment.h
+    include/wpsofficetool/wpscomment.h \
+    log_global.h
 
 INCLUDEPATH += $$PWD/qunzip/include
 

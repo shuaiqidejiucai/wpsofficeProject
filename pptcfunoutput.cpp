@@ -14,11 +14,8 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QStringList>
-#include <spdlog/spdlog.h>
-#include <spdlog/async.h>
-#include "spdlog/sinks/rotating_file_sink.h"
-#include <spdlog/logger.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <log_global.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -333,8 +330,10 @@ void initWPP(WPPHANDLE *wppObj)
     wpp->initWPPRpcClient();
     wpp->initWppApplication();
     *wppObj = wpp;
-    spdlog::init_thread_pool(8192, 1); // 队列8192条，1个后台线程
-    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt<spdlog::async_factory>("com_loger", "logs/app.log", 1048576 *5 , 3);
+//    spdlog::init_thread_pool(8192, 1); // 队列8192条，1个后台线程
+
+    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_st("com_loger", "logs/app.log", 1048576 *5 , 3);
+//    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt<spdlog::async_factory>("com_loger", "logs/app.log", 1048576 *5 , 3);
 //    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 //    std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("/home/ft2000/hmg0815/app.log", 1048576 * 5, 3);
 
@@ -360,13 +359,18 @@ void closeWPP(WPPHANDLE wppObj)
     if(wppObj)
     {
         WppComment *wpp = (WppComment*)wppObj;
+        SPDLOG_INFO("wpp ready close");
         wpp->closeApp();
+        SPDLOG_INFO("wpp close end");
         delete wpp;
-        spdlog::shutdown();
+        SPDLOG_INFO("delete wppCommnt");
+
         if(isNeedFreeAppplication)
         {
             app->deleteLater();
+            SPDLOG_INFO("appliction close");
         }
+        spdlog::shutdown();
     }
 }
 
@@ -510,14 +514,16 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
         QStringList qsTextList = wpp->GetWPPText();
         QStringList qsrearksStringList = wpp->getRearksText();
         QStringList qsMasterList = wpp->getMasterText();
+        QStringList qsLayoutList = wpp->getPPLayoutText();
         QString qsFileTextOutFile = QString::fromUtf8(outfilepath);
         QFile file(qsFileTextOutFile);
         if(file.open(QIODevice::WriteOnly))
         {
+            QString qsLayoutText = qsLayoutList.join("\r\n");
             QString qsText = qsTextList.join("\r\n");
             QString qsTextReark = qsrearksStringList.join("\r\n");
             QString qsMaterText = qsMasterList.join("\r\n");
-            qsText = qsText + qsTextReark + qsMaterText;
+            qsText = qsLayoutText + qsMaterText + qsText + qsTextReark + qsMaterText;
             file.write(qsText.toUtf8());
             file.close();
             SPDLOG_INFO(QString(qsFileTextOutFile + ":text exported").toUtf8().data());
@@ -535,6 +541,9 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
     }
     return 1;
 }
+
+
+
 #ifdef __cplusplus
 }
 #endif

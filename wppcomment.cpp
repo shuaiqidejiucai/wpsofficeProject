@@ -8,6 +8,8 @@
 #include <QBuffer>
 #include <QMimeData>
 #include <QStack>
+#include <utilitytool.h>
+#include <log_global.h>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -103,22 +105,81 @@ QStringList WppComment::GetWPPText()
 {
     QStringList qsStrList;
 
-    QList<kfc::ks_stdptr<wppapi::TextRange> > textRangeList = GetTextRange();
-    for(int i = 0; i < textRangeList.count(); ++i)
+    if(!m_spPresentation)
     {
-        ks_stdptr<TextRange> textRangePtr = textRangeList.at(i);
-        if(textRangePtr)
+        return qsStrList;
+    }
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return qsStrList;
+    }
+
+        long slidRangeCount = 0;
+        slidesPtr->get_Count(&slidRangeCount);
+        for(long j = 1; j <= slidRangeCount; ++j)
         {
-            BSTR  textPtr4;
-            textRangePtr->get_Text(&textPtr4);
-            QString qsStr = GetBSTRText(textPtr4);
-            //qDebug()<<"text:"<<qsStr;
-            if(!qsStr.isEmpty())
+            VARIANT rangeIndex;
+            VariantInit(&rangeIndex);
+            V_VT(&rangeIndex) = VT_I4;
+            V_I4(&rangeIndex) = j;
+
+            ks_stdptr<SlideRange> range;
+            slidesPtr->Range(rangeIndex, &range);
+            if(!range)
             {
-                qsStrList.append(qsStr);
+                continue;
+            }
+            ks_stdptr<Shapes> shapesPtr;
+            range->get_Shapes(&shapesPtr);
+            if(!shapesPtr)
+            {
+                continue;
+            }
+            int shapeCount = 0;
+            shapesPtr->get_Count(&shapeCount);
+            for(int q = 1; q <= shapeCount + 1; ++q)
+            {
+                VARIANT shapeIndex;
+                VariantInit(&shapeIndex);
+                V_VT(&shapeIndex) = VT_I4;
+                V_I4(&shapeIndex) = q;
+                ks_stdptr<Shape> shapePtr;
+                shapesPtr->Item(shapeIndex, &shapePtr);
+                if(!shapePtr)
+                {
+                    continue;
+                }
+                QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+                for(int i = 0; i < shapePtrList.count(); ++i)
+                {
+                    ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                    ks_stdptr<TextFrame> textFramePtr;
+                    tmpShape->get_TextFrame(&textFramePtr);
+                    ks_stdptr<TextEffectFormat> textEffectFramePtr;
+                    tmpShape->get_TextEffect(&textEffectFramePtr);
+                    if(textFramePtr)
+                    {
+                        ks_stdptr<TextRange> textRangePtr;
+                        textFramePtr->get_TextRange(&textRangePtr);
+                        if(textRangePtr)
+                        {
+                            BSTR frameText;
+                            textRangePtr->get_Text(&frameText);
+                            qsStrList.append(GetBSTRText(frameText));
+                        }
+                    }
+                    if(textEffectFramePtr)
+                    {
+                        BSTR effectText;
+                        textEffectFramePtr->get_Text(&effectText);
+                        qsStrList.append(GetBSTRText(effectText));
+                    }
+                }
             }
         }
-    }
+
     return qsStrList;
 }
 
@@ -242,7 +303,7 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::getMaster()
         }
         int shapeCount = 0;
         shapesPtr->get_Count(&shapeCount);
-        for(int q = 1; q <= shapeCount + 1; ++q)
+        for(int q = 1; q <= shapeCount; ++q)
         {
             VARIANT shapeIndex;
             VariantInit(&shapeIndex);
@@ -278,6 +339,79 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::getMaster()
 
     return textRangeList;
 
+}
+
+QStringList WppComment::getPPLayout(long pageIndex)
+{
+    QStringList qsTextList;
+    if(!m_spPresentation)
+    {
+        return qsTextList;
+    }
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return qsTextList;
+    }
+
+    long slidRangeCount = 0;
+    slidesPtr->get_Count(&slidRangeCount);
+
+    VARIANT rangeIndex;
+    VariantInit(&rangeIndex);
+    V_VT(&rangeIndex) = VT_I4;
+    V_I4(&rangeIndex) = pageIndex;
+
+    ks_stdptr<_Slide> slide;
+    slidesPtr->Item(rangeIndex, (Slide**)&slide);
+    if(slide)
+    {
+        ks_stdptr<Shapes>  titleShapes;
+        slide->get_Shapes(&titleShapes);
+        if(titleShapes)
+        {
+            ks_stdptr<Shape> titleShape;
+            titleShapes->get_Title(&titleShape);
+            if(titleShape)
+            {
+                ks_stdptr<TextFrame> textFrame;
+                titleShape->get_TextFrame(&textFrame);
+                if(textFrame)
+                {
+                    ks_stdptr<TextRange> textRange;
+                    textFrame->get_TextRange(&textRange);
+                    if(textRange)
+                    {
+                        BSTR testBtr;
+                        textRange->get_Text(&testBtr);
+                        qsTextList.append(GetBSTRText(testBtr));
+                    }
+                }
+                ks_stdptr<TextEffectFormat> textEffectFrame;
+                titleShape->get_TextEffect(&textEffectFrame);
+                if(textEffectFrame)
+                {
+                    BSTR effectText;
+                    textEffectFrame->get_Text(&effectText);
+                    qsTextList.append(GetBSTRText(effectText));
+                }
+            }
+        }
+    }
+    return qsTextList;
+}
+
+QStringList WppComment::getPPLayoutText()
+{
+    QStringList qsLayoutStringList;
+    int count = getPageCount();
+    for(int i = 1; i <= count; ++i)
+    {
+         QStringList qsTextList = getPPLayout(i);
+         qsLayoutStringList.append(qsTextList);
+    }
+    return qsLayoutStringList;
 }
 
 QStringList WppComment::getMasterText()
@@ -808,6 +942,9 @@ QList<kfc::ks_stdptr<TextRange> > WppComment::GetTextRange()
                     ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
                     ks_stdptr<TextFrame> textFramePtr;
                     tmpShape->get_TextFrame(&textFramePtr);
+                    ks_stdptr<TextEffectFormat> textEffectFramePtr;
+                    tmpShape->get_TextEffect(&textEffectFramePtr);
+                    //textEffectFramePtr->get_Text()
                     if(!textFramePtr)
                     {
                         continue;
@@ -829,12 +966,21 @@ void WppComment::closeApp()
 {
     if (m_spApplication != NULL)
     {
+        SPDLOG_INFO("m_spPresentation ready close");
         m_spPresentation->Close();
+        SPDLOG_INFO("m_spPresentation close end");
+        SPDLOG_INFO("m_spApplication ready quit");
         m_spApplication->Quit();
+        SPDLOG_INFO("m_spApplication quit end");
+        SPDLOG_INFO("m_spDocs ready clear");
         m_spDocs.clear();
+        SPDLOG_INFO("m_spDocs clear end");
         //m_spApplicationEx.clear();
+        SPDLOG_INFO("m_spApplication ready clear");
         m_spApplication.clear();
+        SPDLOG_INFO("m_spApplication clear end ");
         m_rpcClient = nullptr;
+        SPDLOG_INFO("m_rpcClient compare null ");
         if(m_containWidget)
         {
             delete m_containWidget;

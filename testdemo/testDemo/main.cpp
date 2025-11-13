@@ -58,9 +58,13 @@ void killWppProcess()
 
 #include "pptcfunoutput.h"
 #include <QLibrary>
+#include "mytcpserver.h"
 int main(int argc, char *argv[])
 {
-    //QApplication a(argc, argv);
+//    QApplication a(argc, argv);
+//    MyTcpServer server;
+//    server.start(12345);
+//    return a.exec();
 
     typedef void (*initWPP)(WPPHANDLE*);
     typedef void (*closeWPP)(WPPHANDLE);
@@ -90,7 +94,7 @@ int main(int argc, char *argv[])
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     char textCh[2048]= {0};
                     char imageCh[2048] = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/演示文件-SM- (7).dps", "/home/ft2000/mjcenv/dps-ppt",textCh, imageCh, wppObj);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/演示-SM- (19).dps", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",textCh, imageCh, wppObj);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";

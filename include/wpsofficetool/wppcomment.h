@@ -6,6 +6,7 @@
 #include "kfc/comsptr.h"
 #include "officegeneralabilities.h"
 
+
 class WppComment : public QObject
 {
     Q_OBJECT
@@ -37,6 +38,8 @@ public:
     QList<kfc::ks_stdptr<wppapi::TextRange>> getRearks(long pageIndex);
 
     QList<kfc::ks_stdptr<wppapi::TextRange>> getMaster();
+
+    QStringList getPPLayout(long pageIndex);
 
     QStringList getMasterText();
 
