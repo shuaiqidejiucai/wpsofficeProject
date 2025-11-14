@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     char textCh[2048]= {0};
                     char imageCh[2048] = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/演示-SM- (19).dps", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",textCh, imageCh, wppObj);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/演示-SM- (72).ppt", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",textCh, imageCh, wppObj);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";
@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
             {
                 closeWPPFun(wppObj);
             }
-
         }
         //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
     }

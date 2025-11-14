@@ -359,16 +359,16 @@ void closeWPP(WPPHANDLE wppObj)
     if(wppObj)
     {
         WppComment *wpp = (WppComment*)wppObj;
-        SPDLOG_INFO("wpp ready close");
+        //SPDLOG_INFO("wpp ready close");
         wpp->closeApp();
-        SPDLOG_INFO("wpp close end");
+        //SPDLOG_INFO("wpp close end");
         delete wpp;
-        SPDLOG_INFO("delete wppCommnt");
+        //SPDLOG_INFO("delete wppCommnt");
 
         if(isNeedFreeAppplication)
         {
             app->deleteLater();
-            SPDLOG_INFO("appliction close");
+            //SPDLOG_INFO("appliction close");
         }
         spdlog::shutdown();
     }

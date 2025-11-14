@@ -21,9 +21,6 @@ WppComment::WppComment(QObject *parent)
     : QObject{parent},m_rpcClient(nullptr),m_containWidget(nullptr)
 {}
 
-
-
-
 bool WppComment::initWppApplication()
 {
     if(m_rpcClient && m_rpcClient->getWppApplication((IUnknown**)&m_spApplication) == S_OK)
@@ -159,6 +156,7 @@ QStringList WppComment::GetWPPText()
                     tmpShape->get_TextFrame(&textFramePtr);
                     ks_stdptr<TextEffectFormat> textEffectFramePtr;
                     tmpShape->get_TextEffect(&textEffectFramePtr);
+
                     if(textFramePtr)
                     {
                         ks_stdptr<TextRange> textRangePtr;
@@ -170,7 +168,7 @@ QStringList WppComment::GetWPPText()
                             qsStrList.append(GetBSTRText(frameText));
                         }
                     }
-                    if(textEffectFramePtr)
+                   if(textEffectFramePtr)
                     {
                         BSTR effectText;
                         textEffectFramePtr->get_Text(&effectText);
@@ -285,60 +283,81 @@ QList<kfc::ks_stdptr<wppapi::TextRange>> WppComment::getRearks(long pageIndex)
 
 QList<kfc::ks_stdptr<TextRange> > WppComment::getMaster()
 {
-
     QList<ks_stdptr<TextRange>> textRangeList;
     if(!m_spPresentation)
     {
         return textRangeList;
     }
-    ks_stdptr<_Master> sliderMaster;
-    m_spPresentation->get_SlideMaster(&sliderMaster);
-    if(sliderMaster)
-    {
-        ks_stdptr<Shapes> shapesPtr;
-        sliderMaster->get_Shapes(&shapesPtr);
-        if(!shapesPtr)
-        {
-            return textRangeList;
-        }
-        int shapeCount = 0;
-        shapesPtr->get_Count(&shapeCount);
-        for(int q = 1; q <= shapeCount; ++q)
-        {
-            VARIANT shapeIndex;
-            VariantInit(&shapeIndex);
-            V_VT(&shapeIndex) = VT_I4;
-            V_I4(&shapeIndex) = q;
-            ks_stdptr<Shape> shapePtr;
-            shapesPtr->Item(shapeIndex, &shapePtr);
-            if(!shapePtr)
-            {
-                continue;
-            }
 
-            QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
-            for(int i = 0; i < shapePtrList.count(); ++i)
+    ks_stdptr<Slides> slidesPtr;
+    m_spPresentation->get_Slides(&slidesPtr);
+    if(!slidesPtr)
+    {
+        return textRangeList;
+    }
+
+    long slidRangeCount = 0;
+    slidesPtr->get_Count(&slidRangeCount);
+
+    for(int pageIndex = 1; pageIndex <= slidRangeCount; ++pageIndex)
+    {
+        VARIANT rangeIndex;
+        VariantInit(&rangeIndex);
+        V_VT(&rangeIndex) = VT_I4;
+        V_I4(&rangeIndex) = pageIndex;
+
+        ks_stdptr<_Slide> slide;
+        slidesPtr->Item(rangeIndex, (Slide**)&slide);
+        if(slide)
+        {
+            ks_stdptr<_Master> sliderMaster;
+            slide->get_Master(&sliderMaster);
+            if(sliderMaster)
             {
-                ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
-                ks_stdptr<TextFrame> textFramePtr;
-                tmpShape->get_TextFrame(&textFramePtr);
-                if(!textFramePtr)
+                ks_stdptr<Shapes> shapesPtr;
+                sliderMaster->get_Shapes(&shapesPtr);
+                if(!shapesPtr)
                 {
-                    continue;
+                    return textRangeList;
                 }
-                ks_stdptr<TextRange> textRangePtr;
-                textFramePtr->get_TextRange(&textRangePtr);
-                if(textRangePtr)
+                int shapeCount = 0;
+                shapesPtr->get_Count(&shapeCount);
+                for(int q = 1; q <= shapeCount; ++q)
                 {
-                    textRangeList.append(textRangePtr);
+                    VARIANT shapeIndex;
+                    VariantInit(&shapeIndex);
+                    V_VT(&shapeIndex) = VT_I4;
+                    V_I4(&shapeIndex) = q;
+                    ks_stdptr<Shape> shapePtr;
+                    shapesPtr->Item(shapeIndex, &shapePtr);
+                    if(!shapePtr)
+                    {
+                        continue;
+                    }
+
+                    QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+                    for(int i = 0; i < shapePtrList.count(); ++i)
+                    {
+                        ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                        ks_stdptr<TextFrame> textFramePtr;
+                        tmpShape->get_TextFrame(&textFramePtr);
+                        if(!textFramePtr)
+                        {
+                            continue;
+                        }
+                        ks_stdptr<TextRange> textRangePtr;
+                        textFramePtr->get_TextRange(&textRangePtr);
+                        if(textRangePtr)
+                        {
+                            textRangeList.append(textRangePtr);
+                        }
+                    }
                 }
             }
         }
 
     }
-
     return textRangeList;
-
 }
 
 QStringList WppComment::getPPLayout(long pageIndex)
@@ -367,34 +386,58 @@ QStringList WppComment::getPPLayout(long pageIndex)
     slidesPtr->Item(rangeIndex, (Slide**)&slide);
     if(slide)
     {
-        ks_stdptr<Shapes>  titleShapes;
-        slide->get_Shapes(&titleShapes);
-        if(titleShapes)
+        ks_stdptr<CustomLayout> custPtr;
+        slide->get_CustomLayout(&custPtr);
+        if(custPtr)
         {
-            ks_stdptr<Shape> titleShape;
-            titleShapes->get_Title(&titleShape);
-            if(titleShape)
+            ks_stdptr<Shapes> shapesPtr;
+            custPtr->get_Shapes(&shapesPtr);
+            if(!shapesPtr)
             {
-                ks_stdptr<TextFrame> textFrame;
-                titleShape->get_TextFrame(&textFrame);
-                if(textFrame)
+                return qsTextList;
+            }
+            int shapeCount = 0;
+            shapesPtr->get_Count(&shapeCount);
+            for(int q = 1; q <= shapeCount; ++q)
+            {
+                VARIANT shapeIndex;
+                VariantInit(&shapeIndex);
+                V_VT(&shapeIndex) = VT_I4;
+                V_I4(&shapeIndex) = q;
+                ks_stdptr<Shape> shapePtr;
+                shapesPtr->Item(shapeIndex, &shapePtr);
+                if(!shapePtr)
                 {
-                    ks_stdptr<TextRange> textRange;
-                    textFrame->get_TextRange(&textRange);
-                    if(textRange)
-                    {
-                        BSTR testBtr;
-                        textRange->get_Text(&testBtr);
-                        qsTextList.append(GetBSTRText(testBtr));
-                    }
+                    continue;
                 }
-                ks_stdptr<TextEffectFormat> textEffectFrame;
-                titleShape->get_TextEffect(&textEffectFrame);
-                if(textEffectFrame)
+                QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList(shapePtr);
+                for(int i = 0; i < shapePtrList.count(); ++i)
                 {
-                    BSTR effectText;
-                    textEffectFrame->get_Text(&effectText);
-                    qsTextList.append(GetBSTRText(effectText));
+                    ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                    ks_stdptr<TextFrame> textFramePtr;
+                    MsoShapeType shapeType;
+                    tmpShape->get_Type(&shapeType);
+                    tmpShape->get_TextFrame(&textFramePtr);
+                    ks_stdptr<TextEffectFormat> textEffectFramePtr;
+                    tmpShape->get_TextEffect(&textEffectFramePtr);
+
+                    if(textFramePtr)
+                    {
+                        ks_stdptr<TextRange> textRangePtr;
+                        textFramePtr->get_TextRange(&textRangePtr);
+                        if(textRangePtr)
+                        {
+                            BSTR frameText;
+                            textRangePtr->get_Text(&frameText);
+                            qsTextList.append(GetBSTRText(frameText));
+                        }
+                    }
+                    else if(textEffectFramePtr)
+                    {
+                        BSTR effectText;
+                        textEffectFramePtr->get_Text(&effectText);
+                        qsTextList.append(GetBSTRText(effectText));
+                    }
                 }
             }
         }

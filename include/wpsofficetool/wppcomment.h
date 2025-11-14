@@ -41,6 +41,8 @@ public:
 
     QStringList getPPLayout(long pageIndex);
 
+    QStringList getPPLayoutText();
+
     QStringList getMasterText();
 
     QStringList getRearksText();
