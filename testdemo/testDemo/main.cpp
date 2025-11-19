@@ -1,9 +1,6 @@
 #include "mainwindow.h"
 
 #include <QApplication>
-#include "wppcomment.h"
-#include "wpscomment.h"
-#include "etcomment.h"
 #include <QDebug>
 #include "utilitytool.h"
 #include <QLabel>
@@ -66,6 +63,8 @@ int main(int argc, char *argv[])
 //    server.start(12345);
 //    return a.exec();
 
+    Q_UNUSED(argc)
+    Q_UNUSED(argv)
     typedef void (*initWPP)(WPPHANDLE*);
     typedef void (*closeWPP)(WPPHANDLE);
     typedef int (*extractImageAndeText)(const char*, const char*, char*, char*,WPPHANDLE);
@@ -94,7 +93,7 @@ int main(int argc, char *argv[])
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     char textCh[2048]= {0};
                     char imageCh[2048] = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/演示-SM- (72).ppt", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",textCh, imageCh, wppObj);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/演示-SM (5).dps", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",textCh, imageCh, wppObj);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";
@@ -107,6 +106,9 @@ int main(int argc, char *argv[])
             }
         }
         //qDebug()<<"textCh:"<<QString(textCh) <<"======imageCh:"<< QString(imageCh);
+    }
+    else {
+        qDebug()<< lib.errorString();
     }
     return 0;
 }

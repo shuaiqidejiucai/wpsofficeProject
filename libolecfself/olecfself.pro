@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-
+CONFIG += ordered
 SUBDIRS += \
     src/libcerror \
     src/libcthreads \
