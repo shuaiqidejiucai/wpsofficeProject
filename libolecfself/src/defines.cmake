@@ -1,0 +1,22 @@
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    HAVE_VSNPRINTF
+    HAVE_STRLEN
+    HAVE_MALLOC
+    HAVE_MEMSET
+    HAVE_MEMCPY
+    HAVE_MEMCMP
+    HAVE_REALLOC
+    HAVE_FREE
+    HAVE_STDLIB_H
+    HAVE_STRING_H
+    HAVE_LOCAL_LIBCERROR
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${OLECFINCLUDEDIR}/common
+    ${OLECFINCLUDEDIR}/libcerror
+    ${OLECFINCLUDEDIR}/libolecf
+)
+
