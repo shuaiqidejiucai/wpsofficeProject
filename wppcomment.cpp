@@ -560,10 +560,9 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
 
     QList<ks_stdptr<Shape>> shapeList;
     ks_stdptr<Shapes> belongShapesPtr;
-    long count = 0;
-    slidesPtr->get_Count(&count);
     long slidRangeCount = 0;
     slidesPtr->get_Count(&slidRangeCount);
+    SPDLOG_INFO(QString("slider count is %1").arg(slidRangeCount).toUtf8().data());
     for(long i = 1; i <= slidRangeCount; ++i)
     {
         VARIANT rangeIndex;
@@ -597,7 +596,6 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
             shapesPtr->Item(shapeIndex, &shapePtr);
             MsoShapeType tmpShapgeType;
             shapePtr->get_Type(&tmpShapgeType);
-
             //if(tmpShapgeType == msoGroup)
             //{
                 //ks_stdptr<ShapeRange> shapeRangePtr;
@@ -620,9 +618,14 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
         QString outPAth = QString(qsImageDir + "/" + QString::number(i) + ".png");
         ks_bstr filePathBstr (outPAth.utf16());
         HRESULT opHr = shapePtr->Export(filePathBstr, ppShapeFormatPNG);
+
         if(SUCCEEDED(opHr))
         {
             //qDebug()<<"export successful";
+        }
+        else
+        {
+            SPDLOG_ERROR(QString("%1 export failed").arg(outPAth).toUtf8().data());
         }
     }
     return;
@@ -1010,13 +1013,19 @@ void WppComment::closeApp()
     if (m_spApplication != NULL)
     {
         SPDLOG_INFO("m_spPresentation ready close");
-        m_spPresentation->Close();
+        if(m_spPresentation)
+        {
+            m_spPresentation->Close();
+        }
         SPDLOG_INFO("m_spPresentation close end");
         SPDLOG_INFO("m_spApplication ready quit");
         m_spApplication->Quit();
         SPDLOG_INFO("m_spApplication quit end");
         SPDLOG_INFO("m_spDocs ready clear");
-        m_spDocs.clear();
+        if(m_spDocs)
+        {
+           m_spDocs.clear();
+        }
         SPDLOG_INFO("m_spDocs clear end");
         //m_spApplicationEx.clear();
         SPDLOG_INFO("m_spApplication ready clear");

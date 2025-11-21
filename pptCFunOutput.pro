@@ -2,6 +2,7 @@ QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
+QMAKE_CXXFLAGS += -mno-outline-atomics
 TARGET = pptcfunoutout
 TEMPLATE = lib
 
@@ -105,6 +106,11 @@ LIBS += -L"$$LIBDIR/libcpath" -llibcpath
 LIBS += -L"$$LIBDIR/libcfile" -llibcfile
 LIBS += -L"$$LIBDIR/libcsplit" -llibcsplit
 LIBS += -L"$$LIBDIR/libcerror" -llibcerror
+
+#QMAKE_LFLAGS += -L/usr/local/lib64 -latomic
+#LIBS += -L/usr/local/lib64 -latomic
+#LIBS += -L/home/ft2000/mjcenv/projectSpace/wpsofficeGita/lib/gcc -latomic
+#LIBS += -L"/usr/local/lib/../lib64/" -latomic
 # win32 {
 #     QMAKE_PRE_LINK += copy /Y $$PWD/lib/source.txt $$PWD/lib//libquazipSelf.txt
 # } else:unix {

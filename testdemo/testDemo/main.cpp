@@ -65,6 +65,9 @@ int main(int argc, char *argv[])
 
     Q_UNUSED(argc)
     Q_UNUSED(argv)
+
+
+
     typedef void (*initWPP)(WPPHANDLE*);
     typedef void (*closeWPP)(WPPHANDLE);
     typedef int (*extractImageAndeText)(const char*, const char*, char*, char*,WPPHANDLE);
