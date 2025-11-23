@@ -9,6 +9,12 @@
 #include <QFile>
 #include <QIODevice>
 #include <QString>
+#include "pptcfunoutput.h"
+#include <QLibrary>
+#include "mytcpserver.h"
+#include <QFileInfo>
+#include <QProcess>
+#include <QElapsedTimer>
 QString tmpAllPath;
 int gloabalIndex = 0;
 static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
@@ -29,10 +35,6 @@ static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
     return true;
 }
 
-#include <QFile>
-#include <QFileInfo>
-#include <QProcess>
-#include <QElapsedTimer>
 // 检查并杀死名为 "wpp" 的进程
 void killWppProcess()
 {
@@ -53,9 +55,7 @@ void killWppProcess()
     }
 }
 
-#include "pptcfunoutput.h"
-#include <QLibrary>
-#include "mytcpserver.h"
+
 int main(int argc, char *argv[])
 {
 //    QApplication a(argc, argv);
@@ -66,8 +66,6 @@ int main(int argc, char *argv[])
     Q_UNUSED(argc)
     Q_UNUSED(argv)
 
-
-
     typedef void (*initWPP)(WPPHANDLE*);
     typedef void (*closeWPP)(WPPHANDLE);
     typedef int (*extractImageAndeText)(const char*, const char*, char*, char*,WPPHANDLE);
@@ -75,7 +73,7 @@ int main(int argc, char *argv[])
 #ifdef PPTCFUNLIBPATH
     qsLibPath = QString(PPTCFUNLIBPATH) + "/pptcfunoutout";
 #endif
-    killWppProcess();
+    //killWppProcess();
     QLibrary lib(qsLibPath);
     if (lib.load())
     {

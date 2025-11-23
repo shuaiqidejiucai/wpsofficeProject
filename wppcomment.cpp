@@ -10,6 +10,7 @@
 #include <QStack>
 #include <utilitytool.h>
 #include <log_global.h>
+#include<QFileInfo>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -27,6 +28,7 @@ bool WppComment::initWppApplication()
     {
         MsoTriState state = msoFalse;
         m_spApplication->get_Presentations(&m_spDocs);
+        m_spApplication->put_DisplayAlerts(PpAlertLevel::ppAlertsNone);
         return true;
     }
     return false;
@@ -67,12 +69,22 @@ bool WppComment::initWPPRpcClient()
 
 bool WppComment::openWPPDoc(const QString &fileName)
 {
+    QFileInfo fileInfo(fileName);
+    QString qsFileName = fileInfo.fileName();
+    qsFileName = ".~" + qsFileName;
+    QString qsForceFilepath = fileInfo.absolutePath() + "/" +qsFileName;
+    if(QFile::exists(qsForceFilepath))
+    {
+        SPDLOG_ERROR(QString("%1 has been opened").arg(qsForceFilepath).toUtf8().data());
+        return false;
+    }
     ks_bstr filename(fileName.utf16());
     wppapi::MsoTriState readOnly = msoFalse;
     wppapi::MsoTriState untitled = msoFalse;
     wppapi::MsoTriState withWindow = msoFalse;
     ks_stdptr<_Presentation> spPresentation;
     HRESULT hr = m_spDocs->Open(filename, readOnly, untitled, withWindow, (Presentation**)&spPresentation);
+
     if (SUCCEEDED(hr))
     {
         m_spPresentation = spPresentation;
@@ -81,7 +93,7 @@ bool WppComment::openWPPDoc(const QString &fileName)
     }
     else
     {
-        //qDebug() << "open fail";
+        qDebug() << "open fail";
     }
 
     return false;
