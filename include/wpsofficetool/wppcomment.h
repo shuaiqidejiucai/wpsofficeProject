@@ -25,8 +25,6 @@ public:
 
     bool saveWPPDoc();
 
-    QList<kfc::ks_stdptr<wppapi::Shape>> GetShapeGroupList(kfc::ks_stdptr<wppapi::Shape> shapePtr, EU_FileType fileterFileType = AllFileType);
-
     QStringList GetWPPText();
 
     QList<kfc::ks_stdptr<wppapi::TextRange>> GetTextRange();
@@ -62,7 +60,8 @@ private:
     bool getPictureForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun imageDataFunPtr,bool& isContinue);
 
     bool getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr, kfc::ks_stdptr<wppapi::Shape> shapePtr, GetNextOleDataFun oldDataFunPtr, bool& isContinue);
-
+private:
+    QStringList getTableTextList(kfc::ks_stdptr<wppapi::Shape> tableShape);
 private:
     IKRpcClient * m_rpcClient;
     kfc::ks_stdptr<wppapi::_Application> m_spApplication;

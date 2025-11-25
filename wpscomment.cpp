@@ -263,55 +263,6 @@ bool WpsComment::delFile(long rangeStart, long rangeEnd)
     return false;
 }
 
-QList<kfc::ks_stdptr<Shape> > WpsComment::GetShapeGroupList(kfc::ks_stdptr<wpsapi::Shape> shapePtr, EU_FileType fileterFileType)
-{
-    QStack<ks_stdptr<Shape> > shapePtrStack;
-    shapePtrStack.push(shapePtr);
-    QList<ks_stdptr<Shape> > shapeList;
-    while (!shapePtrStack.empty())
-    {
-        ks_stdptr<Shape> popShapePtr = shapePtrStack.pop();
-        if(popShapePtr)
-        {
-            MsoShapeType shapeType;
-            popShapePtr->get_Type(&shapeType);
-            if(shapeType == msoGroup)
-            {
-                ks_stdptr<GroupShapes> groupShapesPtr;
-                shapePtr->get_GroupItems(&groupShapesPtr);
-                if(groupShapesPtr)
-                {
-                    long groupShapeCount = 0;
-                    groupShapesPtr->get_Count(&groupShapeCount);
-                    for(int i = 1; i <= groupShapeCount; ++i)
-                    {
-                        VARIANT index;
-                        VariantInit(&index);
-                        V_VT(&index) = VT_I4;
-                        V_I4(&index) = i;
-                        ks_stdptr<Shape> groupShapePtr;
-                        groupShapesPtr->Item(&index, &groupShapePtr);
-                        shapePtrStack.push(groupShapePtr);
-                    }
-                }
-                continue;
-            }
-            bool isImage = fileterFileType == ImageType && (shapeType == msoPicture || shapeType == msoLinkedPicture || shapeType == msoAutoShape);
-            bool isOleFile = fileterFileType == OleFileType && (shapeType == msoEmbeddedOLEObject || shapeType == msoLinkedOLEObject);
-            bool isAllfileType = fileterFileType == AllFileType;
-            if(isImage || isOleFile || isAllfileType)
-            {
-                shapeList.append(popShapePtr);
-            }
-            else
-            {
-                //qDebug()<<"shape type:"<<shapeType;
-            }
-        }
-    }
-    return shapeList;
-}
-
 QList<kfc::ks_stdptr<Range> > WpsComment::GetTextRange()
 {
     QList<ks_stdptr<Range> > rangeList;
@@ -450,7 +401,7 @@ void WpsComment::getOldFileDataForShapes(kfc::ks_stdptr<wpsapi::Shapes> shapesPt
         shapesPtr->Item(&shapeIndex, &spShape);
         if(spShape)
         {
-            QList<kfc::ks_stdptr<wpsapi::Shape> > tmpShapeList = GetShapeGroupList(spShape, OleFileType);
+            QList<kfc::ks_stdptr<wpsapi::Shape> > tmpShapeList = GetShapeGroupList<WpsApiTypes>(spShape, OleFileType);
             shapeList.append(tmpShapeList);
         }
     }
@@ -599,7 +550,7 @@ void WpsComment::getPictureForShapes(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr, G
             i--;
             continue;
         }
-        QList<kfc::ks_stdptr<Shape> > tmpShapeList = GetShapeGroupList(spShape, ImageType);
+        QList<kfc::ks_stdptr<Shape> > tmpShapeList = GetShapeGroupList<WpsApiTypes>(spShape, ImageType);
         shapeList.append(tmpShapeList);
     }
 
