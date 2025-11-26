@@ -1014,7 +1014,7 @@ QStringList WppComment::getTableTextList(kfc::ks_stdptr<wppapi::Shape> tableShap
             }
             ks_stdptr<TextRange> textRangePtr;
             textFramePtr->get_TextRange(&textRangePtr);
-            if(!textRangePtr)
+            if(textRangePtr)
             {
                 ks_bstr text;
                 textRangePtr->get_Text(&text);
