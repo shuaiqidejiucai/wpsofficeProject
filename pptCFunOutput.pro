@@ -2,7 +2,21 @@ QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
-QMAKE_CXXFLAGS += -mno-outline-atomics
+
+# 获取GCC版本信息
+GCC_VERSION = $$system(gcc -dumpversion)
+GCC_MAJOR = $$system(gcc -dumpversion | cut -d. -f1)
+GCC_MINOR = $$system(gcc -dumpversion | cut -d. -f2)
+
+lessThan(GCC_MAJOR, 13):QMAKE_CXXFLAGS += -mno-outline-atomics
+# greaterThan(GCC_MAJOR, 12) {
+# message(mjc:$$GCC_MAJOR)
+# } else {
+# message(mjc:test)
+#     # QMAKE_CXXFLAGS += -mno-outline-atomics
+# }
+
+
 TARGET = pptcfunoutout
 TEMPLATE = lib
 

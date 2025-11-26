@@ -35422,10 +35422,10 @@ extern "C++" const IID IID_Cell;
             /* [in] */ int NumColumns) = 0;
         
         virtual /* [helpcontext][id] */ HRESULT STDMETHODCALLTYPE Select( void) = 0;
-        
+
         virtual /* [helpcontext][propget][id] */ HRESULT STDMETHODCALLTYPE get_Selected( 
             /* [retval][out] */ VARIANT_BOOL *Selected) = 0;
-        
+
     };
     
 #else 	/* C style interface */
