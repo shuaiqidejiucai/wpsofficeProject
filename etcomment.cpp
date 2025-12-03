@@ -6,7 +6,8 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QBuffer>
-
+#include "libolecf.h"
+#include <QtEndian>
 using namespace etapi;
 using namespace kfc;
 #define ET_LCID ((long)2052)
@@ -121,6 +122,7 @@ QList<QStringList> EtComment::getSheetText(long sheetIndex)
         {
             QString qsText;
             ks_stdptr<IRange> cellRange = rowRangeList.at(j);
+
             if(cellRange)
             {
                 qsText = getText(cellRange);
@@ -173,6 +175,311 @@ void EtComment::extractPicture(long sheetIndex, GetNextOleDataFun imageFunPtr)
         return;
     }
     extractFile(sheetIndex, ImageType, imageFunPtr);
+}
+#include <QLabel>
+#include <QFile>
+static QList<QByteArray> extractPNG(const QByteArray& data) {
+    QList<QByteArray> images;
+
+    QByteArray header = QByteArray::fromHex("89504E470D0A1A0A");
+    QByteArray footer = QByteArray::fromHex("49454E44AE426082");
+
+    int pos = 0;
+    while (data.indexOf(header, pos) != -1)
+    {
+        pos = data.indexOf(header, pos);
+        int end = data.indexOf(footer, pos + header.size());
+        if (end != -1)
+        {
+            end += footer.size();
+            QByteArray candidate = data.mid(pos, end - pos);
+            QByteArray rmData = QByteArray::fromHex("3C00");
+            int rmIndex = candidate.indexOf(rmData);
+            // while (rmIndex != -1)
+            // {
+            //     candidate = candidate.remove(rmIndex, 4);
+            //     rmIndex = candidate.indexOf(rmData);
+            // }
+
+            int ssss = footer.size();
+            QByteArray ba = candidate.right(ssss);
+            // 严格验证
+            QFile file("/home/user/mjc/dps-ppt/bugwenjian/bin");
+            if(file.open(QIODevice::WriteOnly))
+            {
+                file.write(candidate);
+                file.close();
+            }
+            images.append(candidate);
+            qDebug() << "✓ PNG" << candidate.size() << "bytes";
+            pos = end;  // 跳过整个文件
+            continue;
+
+        }
+        pos += header.size();
+    }
+
+    return images;
+}
+
+enum oldImageType
+{
+    JPGType,
+    PNGType
+    //Other:BMP,GIF
+};
+
+static bool IsContainsImageHeardData(const QByteArray &srcData, int &srcDataPos, oldImageType &imageType)
+{
+    //实际数据开始
+    QByteArray jpgHeaderData = QByteArray::fromHex("FFD8FF");
+    int imagePos = 0;
+    imagePos = srcData.indexOf(jpgHeaderData, imagePos);
+    if(imagePos != -1)
+    {
+        srcDataPos = imagePos;
+        imageType = JPGType;
+        return true;
+    }
+    imagePos = 0;
+    QByteArray pngHeaderData = QByteArray::fromHex("89504E470D0A1A0A");
+    imagePos = srcData.indexOf(pngHeaderData, imagePos);
+    if(imagePos != -1)
+    {
+        srcDataPos = imagePos;
+        imageType = PNGType;
+        return true;
+    }
+    //...other
+    return false;
+}
+
+static bool IsContainsImageFooterData(const QByteArray &srcData, oldImageType imageType, int &srcEndDataPos)
+{
+    QByteArray footer;
+    if(imageType == JPGType)
+    {
+        footer = QByteArray::fromHex("FFD9");
+    }
+    else if(imageType == PNGType)
+    {
+        footer = QByteArray::fromHex("49454E44AE426082");
+    }
+    else
+    {
+        return false;
+    }
+    int pos = srcData.indexOf(footer);
+    if(pos != -1)
+    {
+        pos += footer.size();
+        srcEndDataPos = pos;
+        return true;
+    }
+    return false;
+}
+
+static QList<QByteArray> extractJPEG(const QByteArray& data)
+{
+    QList<QByteArray> images;
+
+    // 多种 JPEG 开头
+    QList<QByteArray> headers = {
+        QByteArray::fromHex("FFD8FFE0"),  // JFIF
+        QByteArray::fromHex("FFD8FFE1"),  // EXIF
+        QByteArray::fromHex("FFD8FFE2"),  // ICC
+        QByteArray::fromHex("FFD8FFDB"),  // 量化表
+        QByteArray::fromHex("FFD8FFC0"),  // SOF0
+    };
+
+    QByteArray header = QByteArray::fromHex("FFD8FF");
+    QByteArray footer = QByteArray::fromHex("FFD9");
+
+    int pos = 0;
+    while ((pos = data.indexOf(header, pos)) != -1)
+    {
+        int end = data.indexOf(footer, pos + header.size());
+        if (end != -1) {
+            end += footer.size();
+            QByteArray candidate = data.mid(pos, end - pos);
+
+            QFile file("/home/user/mjc/dps-ppt/bugwenjian/bin");
+            if(file.open(QIODevice::WriteOnly))
+            {
+                file.write(candidate);
+                file.close();
+            }
+            images.append(candidate);
+            qDebug() << "✓ JPEG" << candidate.size() << "bytes";
+            pos = end;
+            continue;
+        }
+        pos += header.size();
+    }
+
+
+    return images;
+}
+
+static QList<QByteArray> extractBMP(const QByteArray& data) {
+    QList<QByteArray> images;
+
+    int pos = 0;
+    while (pos <= data.size() - 14) {
+        if (data[pos] == 'B' && data[pos + 1] == 'M') {
+            quint32 fileSize = qFromLittleEndian<quint32>(
+                reinterpret_cast<const uchar*>(data.data() + pos + 2)
+                );
+
+            if (fileSize >= 14 && fileSize < 50 * 1024 * 1024 &&
+                pos + fileSize <= data.size()) {
+
+                QByteArray candidate = data.mid(pos, fileSize);
+
+                images.append(candidate);
+                qDebug() << "✓ BMP" << candidate.size() << "bytes";
+                pos += fileSize;
+                continue;
+
+            }
+        }
+        pos++;
+    }
+
+    return images;
+}
+
+void EtComment::extractPictureNomemery(const QString& qsETFilePath, const QString& imageOutDir)
+{
+    QByteArray data;
+
+    libolecf_file_t* file = nullptr;
+    libolecf_item_t* item = nullptr;
+    libolecf_error_t* error = nullptr;
+
+    // 打开文件
+    libolecf_file_initialize(&file, &error);
+    libolecf_file_open(file, qsETFilePath.toUtf8().constData(),
+                       LIBOLECF_OPEN_READ, &error);
+
+    // 根据路径获取项
+    // streamPath 格式如 "Workbook" 或 "Root Entry/Workbook"
+    const QString streamPath = "Workbook";
+    if (libolecf_file_get_item_by_utf8_path(
+            file,
+            (const uint8_t *)streamPath.toUtf8().constData(),
+            streamPath.toUtf8().size(),
+            &item,
+            &error) == 1) {
+
+        // 读取流数据
+        uint32_t stream_size = 0;
+        libolecf_item_get_size(item, &stream_size, nullptr);
+
+        //限制图片大小不超过100M防止内存过大
+        if (stream_size > 0 && stream_size < 100 * 1024 * 1024) {
+            data.resize(stream_size);
+
+            libolecf_stream_read_buffer(
+                item,
+                (uint8_t*)data.data(),
+                stream_size,
+                nullptr
+                );
+        }
+
+        libolecf_item_free(&item, nullptr);
+    }
+
+    libolecf_file_close(file, nullptr);
+    libolecf_file_free(&file, nullptr);
+
+    auto readZ = [&](int& pos)->QByteArray {
+        int start = pos;
+        while(data[pos] == '\0')
+        {
+            ++pos;
+        }
+        while (pos < data.size() && data[pos] != '\0') ++pos;
+        if (pos >= data.size()) return {};
+        QByteArray s = data.mid(start, pos - start);
+        ++pos;
+        return s;
+    };
+
+    QByteArray allImageHeader = QByteArray::fromHex("8C00040056005600C1010800C101000035EA0200EB00");
+    QByteArray footer = QByteArray::fromHex("FFD9");
+
+    int pos = 0;
+    pos = data.indexOf(allImageHeader, pos);
+    pos = pos + allImageHeader.size();
+    QByteArray dataSegment = data.mid(pos, 2);
+    pos += 2;
+    QByteArray dataSegmentSize = qToLittleEndian(dataSegment);
+    quint16 value = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(dataSegmentSize.constData()));
+    //去标记数据
+    QList<int> posIndexList;
+    pos += value;
+    while(pos  < data.size())
+    {
+        if(pos + 4 < data.size())
+        {
+            dataSegment = data.mid(pos, 4);
+            if(dataSegment.left(2) == QByteArray::fromHex("3C00"))
+            {
+                posIndexList.append(pos);
+                dataSegment = dataSegment.right(2);
+                dataSegmentSize = qToLittleEndian(dataSegment);
+                value = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(dataSegmentSize.constData()));
+                pos += value;
+                pos += 4;
+            }
+            else
+            {
+                break;
+            }
+        }
+        else
+        {
+            pos = data.size() - 1;
+            break;
+        }
+    }
+
+    for (int i = posIndexList.count() - 1; i >= 0 ; --i)
+    {
+        data.remove(posIndexList.at(i), 4);
+    }
+
+    QList<QByteArray> imageDatas;
+    imageDatas.append(extractJPEG(data));
+    imageDatas.append(extractPNG(data));
+    imageDatas.append(extractBMP(data));
+
+    // QFile file2("/home/user/mjc/dps-ppt/bugwenjian/bin");
+    // if(file2.open(QIODevice::WriteOnly))
+    // {
+    //     file2.write(data);
+    //     file2.close();
+    // }
+
+
+
+    //imageDatas.append( extractPNG(data));
+
+    //imageDatas.append(extractBMP(data));
+
+    for(QByteArray &ba : imageDatas)
+    {
+        QImage image = QImage::fromData(ba);
+        if(!image.isNull())
+        {
+            QLabel * tmpLabel = new QLabel;
+            tmpLabel->setPixmap(QPixmap::fromImage(image));
+            tmpLabel->show();
+        }
+    }
+    //return data;
 }
 
 void EtComment::getOleFileData(long sheetIndex, GetNextOleDataFun oleDataPtr)

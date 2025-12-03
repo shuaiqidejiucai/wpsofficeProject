@@ -69,15 +69,10 @@ bool WppComment::initWPPRpcClient()
 
 bool WppComment::openWPPDoc(const QString &fileName)
 {
-    //    QFileInfo fileInfo(fileName);
-    //    QString qsFileName = fileInfo.fileName();
-    //    qsFileName = ".~" + qsFileName;
-    //    QString qsForceFilepath = fileInfo.absolutePath() + "/" +qsFileName;
-    //    if(QFile::exists(qsForceFilepath))
-    //    {
-    //        SPDLOG_ERROR(QString("%1 has been opened").arg(qsForceFilepath).toUtf8().data());
-    //        return false;
-    //    }
+    if(isFileLocked(fileName))
+    {
+        SPDLOG_ERROR(QString("%1 has been opened").arg(fileName).toUtf8().data());
+    }
     ks_bstr filename(fileName.utf16());
     wppapi::MsoTriState readOnly = msoFalse;
     wppapi::MsoTriState untitled = msoFalse;
@@ -167,7 +162,6 @@ QStringList WppComment::GetWPPText()
             {
                 qsStrList.append(getTableTextList(shapePtr));
             }
-
 
             QList<ks_stdptr<Shape>> shapePtrList = GetShapeGroupList<WppApiTypes>(shapePtr);
             for(int i = 0; i < shapePtrList.count(); ++i)

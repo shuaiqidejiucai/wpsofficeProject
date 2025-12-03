@@ -221,9 +221,40 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
 }
 
 
+void killEtProcess()
+{
+    // 查找所有名为 wpp 的进程
+    QProcess psProcess;
+    psProcess.start("pgrep", QStringList() << "et");
+    psProcess.waitForFinished();
+    QByteArray output = psProcess.readAllStandardOutput();
+    QList<QByteArray> pidList = output.split('\n');
+
+    for (const QByteArray& pid : pidList) {
+        bool ok = false;
+        int pidInt = pid.trimmed().toInt(&ok);
+        if (ok && pidInt > 0) {
+            // 杀死进程
+            QProcess::execute("kill", QStringList() << "-9" << QString::number(pidInt));
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    //EtComment::extractPictureNomemery("/home/user/mjc/dps-ppt/bugwenjian/et2.et", "");
+    killEtProcess();
+    // EtComment etCom;
+    // etCom.initEtRpcClient();
+    // etCom.initEtApplication();
+    //etCom.openEtDoc("/home/user/mjc/dps-ppt/bugwenjian/et2.et");
+    //etCom.extractPictureNomemery("/home/user/mjc/dps-ppt/bugwenjian/et2.et");
+    // etCom.closeEtDoc();
+    // etCom.closeApp();
+    EtComment::extractPictureNomemery("/home/user/mjc/dps-ppt/bugwenjian/et1.xls","");
+    a.exec();
+
     QSettings settings("netconfig.ini", QSettings::IniFormat);
     QString host = settings.value("network/host", "localhost").toString();
     int port = settings.value("network/port", 12345).toInt();

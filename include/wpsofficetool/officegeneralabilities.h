@@ -10,6 +10,7 @@
 #include <common.h>
 #include <mso_enum.h>
 #include<QStack>
+#include <QProcess>
 
 enum EU_FileType
 {
@@ -120,6 +121,16 @@ inline QList<kfc::ks_stdptr<typename T::Shape> > GetShapeGroupList(kfc::ks_stdpt
         }
     }
     return shapeList;
+}
+
+
+inline bool isFileLocked(const QString& filePath)
+{
+    QProcess process;
+    process.start("lsof", QStringList() << filePath);
+    process.waitForFinished();
+
+    return process.exitCode() == 0 && !process.readAllStandardOutput().isEmpty();
 }
 
 class OfficeGeneralAbilities

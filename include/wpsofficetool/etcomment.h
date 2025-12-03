@@ -37,6 +37,8 @@ public:
 
     void extractPicture(long sheetIndex, GetNextOleDataFun imageFunPtr);
 
+    static void extractPictureNomemery(const QString &qsETFilePath, const QString &imageOutDir);
+
     void getOleFileData(long sheetIndex, GetNextOleDataFun oleDataPtr);
 private:
     void extractFile(long sheetIndex, EU_FileType fileType, GetNextOleDataFun fileFunPtr);
