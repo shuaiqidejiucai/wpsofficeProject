@@ -871,7 +871,21 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
-        QByteArray data = mdata->data(MimeDataKey);
+        QStringList qsMimeDataKeyList = mdata->formats();
+        QString qsMimeData;
+        for(const QString& qsTmp : qsMimeDataKeyList)
+        {
+            if(qsTmp.contains(WPPMimeDataKey) && qsTmp.contains("Format"))
+            {
+                qsMimeData = qsTmp;
+                break;
+            }
+        }
+        if(qsMimeData.isEmpty())
+        {
+            return result;
+        }
+        QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
         if(UtilityTool::findOleDataFromZipMemory(data, srcData))
         {
@@ -880,7 +894,15 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
                 return result;
             }
             ST_VarantFile stOleFile;
-            UtilityTool::GetOleFileData(srcData, stOleFile);
+            if(srcData.at(0) == 0x02)
+            {
+                stOleFile.fileData = srcData;
+            }
+            else
+            {
+                UtilityTool::GetOleFileData(srcData, stOleFile);
+            }
+
             EU_OperateType operaTye;
             ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);

@@ -754,7 +754,21 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
-        QByteArray data = mdata->data(MimeDataKey);
+        QStringList qsMimeDataKeyList = mdata->formats();
+        QString qsMimeData;
+        for(const QString& qsTmp : qsMimeDataKeyList)
+        {
+            if(qsTmp.contains(ETMimeDataKey) && qsTmp.contains("Format"))
+            {
+                qsMimeData = qsTmp;
+                break;
+            }
+        }
+        if(qsMimeData.isEmpty())
+        {
+            return result;
+        }
+        QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
         if(UtilityTool::findOleDataFromZipMemory(data, srcData))
         {

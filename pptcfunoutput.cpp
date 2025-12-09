@@ -15,12 +15,70 @@
 #include <QDateTime>
 #include <QStringList>
 #include <log_global.h>
-
+#include <QtEndian>
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+QString tmpOlePath;
 QString tmpImagePath;
 int gloabalIndex = 0;
+static bool TestOleFile(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
+{
+    operateType = NoOperateType;
+    QByteArray ba = varInFile.fileData;
+    if(ba.at(0) == 0x02)
+    {
+        do
+        {
+            if(ba.size() < 2)
+            {
+                break;
+            }
+            int fileNameLength = (unsigned char)ba.at(1);
+            if(ba.size() < 130)
+            {
+                break;
+            }
+            QByteArray fileNameData = ba.mid(2, 128);
+            QString qsFileName = QString::fromUtf8(fileNameData);
+            if(ba.size() < 134)
+            {
+                break;
+            }
+            QByteArray fileDataSize = ba.mid(130,4);
+            int dataLength = qFromLittleEndian<int>(fileDataSize.constData() + 0);
+            int sss = ba.size();
+            if(ba.size() < 134 + dataLength)
+            {
+                break;
+            }
+            QByteArray data = ba.mid(134, dataLength);
+            ba.remove(0, 134 + dataLength);
+
+            QFile file(tmpOlePath + "/" +QString::number(gloabalIndex) + qsFileName);
+            if(file.open(QIODevice::WriteOnly))
+            {
+                file.write(data);
+                file.close();
+                gloabalIndex++;
+            }
+        }
+        while (!ba.isEmpty());
+        return true;
+    }
+
+    QFile file(tmpOlePath + "/" +QString::number(gloabalIndex) + varInFile.qsFileName);
+    if(file.open(QIODevice::WriteOnly))
+    {
+        file.write(ba);
+        file.close();
+        gloabalIndex++;
+    }
+
+    return true;
+}
+
 static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
 {
     operateType = NoOperateType;
@@ -91,7 +149,7 @@ void closeWPP(WPPHANDLE wppObj)
     }
 }
 
-int initExtractFloder(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir)
+int initExtractFloder(const char *inputfilepath, const char *rootpath, ST_OutFilePath * pOutFilePath, ExtratorElementType elementType)
 {
     QString qsInputfilepath = QString::fromUtf8(inputfilepath);
     QFileInfo inputPathInfo(qsInputfilepath);
@@ -100,17 +158,11 @@ int initExtractFloder(const char *inputfilepath, const char *rootpath, char *out
         SPDLOG_ERROR("file is No exists");
         return 0;
     }
-    if(!outfilepath)
-    {
-        SPDLOG_ERROR("outfilepath is nullptr");
-        return 0;
-    }
-    if(!imagedir)
-    {
-        SPDLOG_ERROR("imagedir is nullptr");
-        return 0;
-    }
     QString qsRootpath = QString::fromUtf8(rootpath);
+    if(qsRootpath.right(1) == "/")
+    {
+        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
+    }
     QDir dir(qsRootpath);
     if(!dir.exists())
     {
@@ -126,82 +178,121 @@ int initExtractFloder(const char *inputfilepath, const char *rootpath, char *out
         }
     }
 
-    if(qsRootpath.right(1) == "/")
+    if(elementType & TextElementType)
     {
-        qsRootpath = qsRootpath.left(qsRootpath.length() - 1);
-    }
-    QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
-    QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
-    QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
-    //QString qsFileImOutFilePrefix = qsRootpath + "/outImage/" + inputPathInfo.fileName();
-
-    QDir fileTextOutDir(qsFileTextOutDir);
-    if(fileTextOutDir.exists())
-    {
-        QString qslog = "path:" + qsFileTextOutDir +" existed ready delete";
-        SPDLOG_INFO(qslog.toUtf8().data());
-        //qDebug()<<qsFileTextOutDir<<": existed ready delete";
-        if(!fileTextOutDir.removeRecursively())
+        if(!pOutFilePath->textFilePath)
         {
-            SPDLOG_ERROR("delete failed");
-            //qDebug()<<qsFileTextOutDir<<": delete failed";
+            SPDLOG_ERROR("outfilepath is nullptr");
             return 0;
         }
-        else
+        QString qsFileTextOutDir = qsRootpath + "/outText/" + inputPathInfo.fileName();
+        QString qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
+        QDir fileTextOutDir(qsFileTextOutDir);
+        if(fileTextOutDir.exists())
         {
-            SPDLOG_INFO("delete successful");
-            //qDebug()<<qsFileTextOutDir<<": delete successful";
+            QString qslog = "path:" + qsFileTextOutDir +" existed ready delete";
+            SPDLOG_INFO(qslog.toUtf8().data());
+            if(!fileTextOutDir.removeRecursively())
+            {
+                SPDLOG_ERROR("delete failed");
+                return 0;
+            }
+            else
+            {
+                SPDLOG_INFO("delete successful");
+            }
         }
-    }
 
-    if(!fileTextOutDir.mkpath(qsFileTextOutDir))
-    {
-        QString qslog = "path:" + qsFileTextOutDir +" create failed";
-        SPDLOG_ERROR(qslog.toUtf8().data());
-        //qDebug()<<qsFileTextOutDir<<": create failed";
-        return 0;
-    }
-
-    SPDLOG_INFO(QString("path:" + qsFileTextOutDir +" create successful").toUtf8().data());
-    //qDebug()<<qsFileTextOutDir<<": create successful";
-    QDir fileImageOutDir(qsFileImageOutDir);
-    if(fileImageOutDir.exists())
-    {
-        SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" existed ready delete").toUtf8().data());
-        //qDebug()<<qsFileImageOutDir<<": existed ready delete";
-        if(!fileImageOutDir.removeRecursively())
+        if(!fileTextOutDir.mkpath(qsFileTextOutDir))
         {
-            SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +"  delete failed").toUtf8().data());
-            //qDebug()<<qsFileImageOutDir<<": delete failed";
+            QString qslog = "path:" + qsFileTextOutDir +" create failed";
+            SPDLOG_ERROR(qslog.toUtf8().data());
             return 0;
         }
-        else
-        {
-            SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" delete successful").toUtf8().data());
 
-            //qDebug()<<qsFileImageOutDir<<": delete successful";
-        }
+        SPDLOG_INFO(QString("path:" + qsFileTextOutDir +" create successful").toUtf8().data());
+        memcpy(pOutFilePath->textFilePath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
     }
-    if(!fileImageOutDir.mkpath(qsFileImageOutDir))
+    if(elementType & ImageElementType)
     {
-        SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +" create failed").toUtf8().data());
-        return 0;
-        //qDebug()<<qsFileImageOutDir<<": create failed";
+        if(!pOutFilePath->imageDir)
+        {
+            SPDLOG_ERROR("imagedir is nullptr");
+            return 0;
+        }
+        QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
+        QDir fileImageOutDir(qsFileImageOutDir);
+        if(fileImageOutDir.exists())
+        {
+            SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" existed ready delete").toUtf8().data());
+            if(!fileImageOutDir.removeRecursively())
+            {
+                SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +"  delete failed").toUtf8().data());
+                return 0;
+            }
+            else
+            {
+                SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" delete successful").toUtf8().data());
+            }
+        }
+        if(!fileImageOutDir.mkpath(qsFileImageOutDir))
+        {
+            SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +" create failed").toUtf8().data());
+            return 0;
+        }
+        SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" create successful").toUtf8().data());
+
+        //qDebug()<<qsFileImageOutDir<<": create successful";
+
+
+        memcpy(pOutFilePath->imageDir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
     }
-    SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" create successful").toUtf8().data());
+    if(elementType & AttachmentElementType)
+    {
+        if(!pOutFilePath->attachmentDir)
+        {
+            SPDLOG_ERROR("attachmentdir is nullptr");
+            return 0;
+        }
+        QString qsAttachmentDir = qsRootpath + "/outAttachment/" + inputPathInfo.fileName();
+        QDir fileOutDir(qsAttachmentDir);
+        if(fileOutDir.exists())
+        {
+            SPDLOG_INFO(QString("path:" + qsAttachmentDir +" existed ready delete").toUtf8().data());
+            if(!fileOutDir.removeRecursively())
+            {
+                SPDLOG_ERROR(QString("path:" + qsAttachmentDir +"  delete failed").toUtf8().data());
+                return 0;
+            }
+            else
+            {
+                SPDLOG_INFO(QString("path:" + qsAttachmentDir +" delete successful").toUtf8().data());
+            }
+        }
+        if(!fileOutDir.mkpath(qsAttachmentDir))
+        {
+            SPDLOG_ERROR(QString("path:" + qsAttachmentDir +" create failed").toUtf8().data());
+            return 0;
+        }
+        SPDLOG_INFO(QString("path:" + qsAttachmentDir +" create successful").toUtf8().data());
 
-    //qDebug()<<qsFileImageOutDir<<": create successful";
+        memcpy(pOutFilePath->attachmentDir, qsAttachmentDir.toUtf8().data(), qsAttachmentDir.toUtf8().size());
+    }
 
-    memcpy(outfilepath, qsFileTextOutFile.toUtf8().data(), qsFileTextOutFile.toUtf8().size());
-    memcpy(imagedir, qsFileImageOutDir.toUtf8().data(), qsFileImageOutDir.toUtf8().size());
+
     return 1;
 }
 
-int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *outfilepath, char *imagedir, WPPHANDLE wppObj)
+int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePath*pSTOutFilePath, WPPHANDLE wppObj, ExtratorElementType elementType)
 {
     if(!wppObj)
     {
         SPDLOG_ERROR("HANDLE NO INIT");
+        return 0;
+    }
+    if(!pSTOutFilePath)
+    {
+        SPDLOG_ERROR("ST_OutFilePath Is NULL");
         return 0;
     }
     QString qsInputfilepath = QString::fromUtf8(inputfilepath);
@@ -218,7 +309,7 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
         SPDLOG_ERROR("file type is error");
         return 0;
     }
-    int result = initExtractFloder(inputfilepath, rootpath, outfilepath, imagedir);
+    int result = initExtractFloder(inputfilepath, rootpath, pSTOutFilePath, elementType);
     if(result == 0)
     {
         SPDLOG_INFO("floder init failed");
@@ -228,28 +319,44 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
     if(wpp->openWPPDoc(qsInputfilepath))
     {
         SPDLOG_INFO(QString("file:" + qsInputfilepath + "open successful").toUtf8().data());
-        //qDebug()<<"file open successful";
-        QStringList qsTextList = wpp->GetWPPText();
-        QStringList qsrearksStringList = wpp->getRearksText();
-        QStringList qsMasterList = wpp->getMasterText();
-        QStringList qsLayoutList = wpp->getPPLayoutText();
-        QString qsFileTextOutFile = QString::fromUtf8(outfilepath);
-        QFile file(qsFileTextOutFile);
-        if(file.open(QIODevice::WriteOnly))
+        if(elementType & TextElementType)
         {
-            QString qsLayoutText = qsLayoutList.join("\r\n");
-            QString qsText = "#main body#" + qsTextList.join("\r\n") + "#main body#";
-            QString qsTextReark = qsrearksStringList.join("\r\n");
-            QString qsMaterText = qsMasterList.join("\r\n");
-            qsText = qsLayoutText + qsMaterText + qsText + qsTextReark + qsMaterText;
-            file.write(qsText.toUtf8());
-            file.close();
-            SPDLOG_INFO(QString(qsFileTextOutFile + ":text exported").toUtf8().data());
+            QStringList qsTextList = wpp->GetWPPText();
+            QStringList qsrearksStringList = wpp->getRearksText();
+            QStringList qsMasterList = wpp->getMasterText();
+            QStringList qsLayoutList = wpp->getPPLayoutText();
+            QString qsFileTextOutFile = QString::fromUtf8(pSTOutFilePath->textFilePath);
+            QFile file(qsFileTextOutFile);
+            if(file.open(QIODevice::WriteOnly))
+            {
+                QString qsLayoutText = qsLayoutList.join("\r\n");
+                QString qsText = "#main body#" + qsTextList.join("\r\n") + "#main body#";
+                QString qsTextReark = qsrearksStringList.join("\r\n");
+                QString qsMaterText = qsMasterList.join("\r\n");
+                qsText = qsLayoutText + qsMaterText + qsText + qsTextReark + qsMaterText;
+                file.write(qsText.toUtf8());
+                file.close();
+                SPDLOG_INFO(QString(qsFileTextOutFile + ":text exported").toUtf8().data());
+            }
         }
 
-        QString qsFileImageOutDir = QString::fromUtf8(imagedir);
-        wpp->extractPictureNomemery(qsFileImageOutDir);
-        SPDLOG_INFO(QString(qsFileImageOutDir +":image exported").toUtf8().data());
+        if(elementType & ImageElementType)
+        {
+            QString qsFileImageOutDir = QString::fromUtf8(pSTOutFilePath->imageDir);
+            wpp->extractPictureNomemery(qsFileImageOutDir);
+            SPDLOG_INFO(QString(qsFileImageOutDir +":image exported").toUtf8().data());
+        }
+
+        if(elementType & AttachmentElementType)
+        {
+            QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
+            tmpOlePath = qsAttachmentDir;
+            gloabalIndex = 0;
+            wpp->getOleFileData(TestOleFile);
+            tmpOlePath.clear();
+            SPDLOG_INFO(QString(qsAttachmentDir +":attachment exported").toUtf8().data());
+        }
+
         //wpp.extractPicture(TestPicture);
         wpp->closeWPPDoc();
     }
@@ -265,3 +372,4 @@ int extractImageAndeText(const char *inputfilepath, const char *rootpath, char *
 #ifdef __cplusplus
 }
 #endif
+

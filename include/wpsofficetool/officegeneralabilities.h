@@ -18,7 +18,9 @@ enum EU_FileType
     ImageType,
     OleFileType
 };
-const QString MimeDataKey = "Kingsoft WPS 9.0 Format";
+const QString WPSMimeDataKey = "Kingsoft WPS";
+const QString WPPMimeDataKey = "Kingsoft WPP";
+const QString ETMimeDataKey = "Kingsoft ET";
 struct WppApiTypes {
     using Shape = wppapi::Shape;
     using MsoShapeType = wppapi::MsoShapeType;

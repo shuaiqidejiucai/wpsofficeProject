@@ -231,7 +231,7 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOle
     libbfio_handle_free(&bfio_handle, nullptr);
     return successful;
 }
-
+#include <QtEndian>
 bool checkOleHeader(const QByteArray& srcData)
 {
     // OLECF 魔数 D0 CF 11 E0 A1 B1 1A E1
@@ -248,6 +248,7 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
     bool findOleData = false;
     QBuffer buffer;
     buffer.setData(zipBytes);
+    QByteArray dstData;
     if (!buffer.open(QIODevice::ReadOnly))
     {
         qWarning() << "QBuffer open fail";
@@ -268,10 +269,30 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
         if (name.endsWith('/'))
             continue;
 
-        if(!name.startsWith("oleObject"))
+        if(!name.contains("oleObject") && !name.contains("embeddings"))
         {
             continue;
         }
+        //01:OLE. 02:Embeddings
+        QString qsFileName;
+        QByteArray heard = QByteArray::fromHex("01");
+        if(name.contains("embeddings"))
+        {
+            QStringList qsFloderLevelList = name.split("/");
+            int currentPositionIndex = qsFloderLevelList.count() - 2;
+            if(currentPositionIndex < 0)
+            {
+                continue;
+            }
+            QString qsParentFloder = qsFloderLevelList.at(currentPositionIndex);
+            if(qsParentFloder != "embeddings")
+            {
+                continue;
+            }
+            heard = QByteArray::fromHex("02");
+            qsFileName = name.split("/").last();
+        }
+
         QuaZipFile zf(&zip);
         if (!zf.open(QIODevice::ReadOnly))
         {
@@ -279,10 +300,21 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
             continue;
         }
         findOleData = true;
-        outData = zf.readAll();
+        QByteArray ba = zf.readAll();
+        QByteArray sizeBytes;
+        sizeBytes.resize(4);
+        int baSize = ba.size();
+
+        QByteArray fileNameData=qsFileName.toUtf8().leftJustified(128, '\0', true);
+
+        qToLittleEndian((quint32)baSize,(uchar*)sizeBytes.data());
+
+        dstData = dstData + heard + QByteArray::fromHex("80") +
+                fileNameData + sizeBytes + ba;
         zf.close();
     }
     zip.close();
+    outData = dstData;
     return findOleData;
 }
 

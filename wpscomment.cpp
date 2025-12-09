@@ -599,7 +599,21 @@ bool WpsComment::getOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
-        QByteArray data = mdata->data(MimeDataKey);
+        QStringList qsMimeDataKeyList = mdata->formats();
+        QString qsMimeData;
+        for(const QString& qsTmp : qsMimeDataKeyList)
+        {
+            if(qsTmp.contains(WPSMimeDataKey) && qsTmp.contains("Format"))
+            {
+                qsMimeData = qsTmp;
+                break;
+            }
+        }
+        if(qsMimeData.isEmpty())
+        {
+            return result;
+        }
+        QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
         if(UtilityTool::findOleDataFromZipMemory(data, srcData))
         {
@@ -701,7 +715,21 @@ bool WpsComment::getOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShape
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
-        QByteArray data = mdata->data(MimeDataKey);
+        QStringList qsMimeDataKeyList = mdata->formats();
+        QString qsMimeData;
+        for(const QString& qsTmp : qsMimeDataKeyList)
+        {
+            if(qsTmp.contains(WPSMimeDataKey) && qsTmp.contains("Format"))
+            {
+                qsMimeData = qsTmp;
+                break;
+            }
+        }
+        if(qsMimeData.isEmpty())
+        {
+            return result;
+        }
+        QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
         if(UtilityTool::findOleDataFromZipMemory(data, srcData))
         {
