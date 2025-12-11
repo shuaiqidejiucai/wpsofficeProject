@@ -8,6 +8,10 @@
 #include <quazipfile.h>
 #include <QTextCodec>
 #include <QDomDocument>
+#include <QRegularExpression>
+#include <QtEndian>
+#include <QDomElement>
+#include <QStack>
 static QByteArray readItemData(libolecf_item_t* item)
 {
     uint32_t size = 0;
@@ -139,7 +143,7 @@ static void getOle10NativeData(libolecf_item_t* root_item, QList<ST_VarantFile>&
     return;
 }
 
-static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOleFile)
+static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOleFile, QString findName= QString())
 {
     int number_of_sub_items = 0;
     libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
@@ -156,26 +160,25 @@ static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOle
         QString itemName(name);
         delete[] name;
 
-        if (itemName.endsWith("Ole10Native"))
+        if(findName.isEmpty())
         {
-            QByteArray ole10 = readItemData(sub_item);
-            if (parseOle10Native(ole10, stOleFile))
+            if (itemName.endsWith("Ole10Native"))
             {
+                QByteArray ole10 = readItemData(sub_item);
+                if (parseOle10Native(ole10, stOleFile))
+                {
+                    //libolecf_item_free(&sub_item, nullptr);
+                }
+            }
+        }
+        else
+        {
+            if (itemName.endsWith(findName, Qt::CaseInsensitive))
+            {
+                stOleFile.fileData = readItemData(sub_item);
                 //libolecf_item_free(&sub_item, nullptr);
             }
         }
-        else if (itemName.endsWith("Package", Qt::CaseInsensitive))
-        {
-            stOleFile.fileData = readItemData(sub_item);
-            //libolecf_item_free(&sub_item, nullptr);
-        }
-//        else if (itemName.contains("WordDocument", Qt::CaseInsensitive))
-//        {
-//            stOleFile.qsTmpFilePath = "WordDocument";
-//            stOleFile.qsFileName = "tmp.doc";
-//            //stOleFile.fileData = readItemData(sub_item);
-//            //libolecf_item_free(&sub_item, nullptr);
-//        }
 
         if (childItemCount > 0 /*&& outData.isEmpty()*/)
         {
@@ -186,7 +189,7 @@ static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOle
     return;
 }
 
-bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOleFile)
+bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOleFile, QString findName)
 {
     bool successful = false;
     QByteArray buffer = srcData;
@@ -235,7 +238,7 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOle
     libolecf_item_t* root_item = nullptr;
     if (libolecf_file_get_root_item(olecf2_file, &root_item, nullptr) == 1)
     {
-        getOle10NativeData(root_item, stOleFile);
+        getOle10NativeData(root_item, stOleFile, findName);
         if (!stOleFile.fileData.isEmpty())
         {
             successful = true;
@@ -249,7 +252,7 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOle
     libbfio_handle_free(&bfio_handle, nullptr);
     return successful;
 }
-#include <QtEndian>
+
 bool checkOleHeader(const QByteArray& srcData)
 {
     // OLECF 魔数 D0 CF 11 E0 A1 B1 1A E1
@@ -260,8 +263,7 @@ bool checkOleHeader(const QByteArray& srcData)
     }
     return false;
 }
-#include <QTextCodec>
-#include <QDomElement>
+
 QString GetAttachmentDocumentType(QByteArray xmlData)
 {
     //    "clipboard/worksheets/worksheet1.xml"
@@ -270,25 +272,47 @@ QString GetAttachmentDocumentType(QByteArray xmlData)
     QDomDocument xmlDoc;
     xmlDoc.setContent(xmlData);
     QDomElement mainEle = xmlDoc.documentElement();
-    if(!mainEle.isNull())
+    QStack<QDomElement> elementStack;
+    elementStack.push(mainEle);
+
+    QDomElement mcBackNode;
+    while (!elementStack.isEmpty())
     {
-        QDomElement oldObjsNode = mainEle.firstChildElement("oleObjects");
-        if(!oldObjsNode.isNull())
+        QDomElement element = elementStack.pop();
+        if(!element.isNull())
         {
-            QDomElement altEle = oldObjsNode.firstChildElement("mc:AlternateContent");
-            if(!altEle.isNull())
+            QDomNodeList nodeList = element.childNodes();
+            for(int i = 0; i < nodeList.count(); ++i)
             {
-                QDomElement backEle = altEle.firstChildElement("mc:Fallback");
-                if(!backEle.isNull())
+                QDomNode node = nodeList.at(i);
+                if(node.hasChildNodes())
                 {
-                    QDomElement oleEle = backEle.firstChildElement("oleObject");
-                    if(!oleEle.isNull())
+                    if(node.toElement().tagName() == "mc:Fallback")
                     {
-                        QString qsID = oleEle.attribute("progId");
-                        return qsID;
+                        mcBackNode = node.toElement();
+                        break;
                     }
+                    elementStack.push(node.toElement());
                 }
             }
+            if(!mcBackNode.isNull())
+            {
+                break;
+            }
+        }
+    }
+    if(mcBackNode.isNull())
+    {
+        return QString();
+    }
+    QDomElement backEle = mcBackNode.firstChildElement("mc:Fallback");
+    if(!backEle.isNull())
+    {
+        QDomElement oleEle = backEle.firstChildElement("oleObject");
+        if(!oleEle.isNull())
+        {
+            QString qsID = oleEle.attribute("progId");
+            return qsID;
         }
     }
     return QString();
@@ -320,8 +344,21 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
         // 目录条目
         if (name.endsWith('/'))
             continue;
-
-
+        QuaZipFile zaf(&zip);
+        if (zaf.open(QIODevice::ReadOnly))
+        {
+            QByteArray tmpData = zaf.readAll();
+            //qsDocType = GetAttachmentDocumentType(tmpData);
+            QString nameT = name.split("/").last();
+            QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/" + nameT);
+            if(file.open(QIODevice::WriteOnly))
+            {
+                file.write(tmpData);
+                file.close();
+            }
+            zaf.close();
+        }
+        continue;
         if(name.contains("/worksheets/worksheet"))
         {
             if(name.split("/").last().endsWith(".xml"))
@@ -419,6 +456,111 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
     zip.close();
     outData = dstData;
     return findOleData;
+}
+
+void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentType docType)
+{
+    QBuffer buffer;
+    buffer.setData(zipBytes);
+    QByteArray dstData;
+    if (!buffer.open(QIODevice::ReadOnly))
+    {
+        qWarning() << "QBuffer open fail";
+        return;
+    }
+
+    QuaZip zip(&buffer);
+
+    if (!zip.open(QuaZip::mdUnzip))
+    {
+        qWarning() << "QuaZip open fail, code =" << zip.getZipError();
+        return;
+    }
+
+    QString qsDocType;
+    QByteArray srcData;
+    for (bool more = zip.goToFirstFile(); more; more = zip.goToNextFile())
+    {
+        QString name = zip.getCurrentFileName();
+        // 目录条目
+        if (name.endsWith('/'))
+            continue;
+
+        QString qsCompareFilePath;
+        switch (docType)
+        {
+        case WpsFileType:qsCompareFilePath = "";
+            break;
+        case WPPFileType:qsCompareFilePath = "/drawings/drawing[0-9]+.xml";
+            break;
+        case ETFileType:qsCompareFilePath = "/worksheets/worksheet[0-9]+.xml";
+            break;
+        default:
+            break;
+        }
+
+        if(name.contains(QRegularExpression(qsCompareFilePath)))
+        {
+            QuaZipFile zaf(&zip);
+            if (!zaf.open(QIODevice::ReadOnly))
+            {
+                QByteArray tmpData = zaf.readAll();
+                zaf.close();
+                qsDocType = GetAttachmentDocumentType(tmpData);
+            }
+        }
+        else if (name.contains(QRegularExpression("/embeddings/")))
+        {
+            QuaZipFile zaf(&zip);
+            if (!zaf.open(QIODevice::ReadOnly))
+            {
+                srcData = zaf.readAll();
+                zaf.close();
+            }
+        }
+        else
+        {
+
+        }
+        if(!qsDocType.isEmpty() && !srcData.isEmpty())
+        {
+            break;
+        }
+     }
+
+    if(qsDocType == "PowerPoint.Show.8")
+    {
+        stOleFile.qsFileName = "tmp.ppt";
+        stOleFile.fileData = srcData;
+    }
+    else if(qsDocType == "Word.Document.8")
+    {
+        stOleFile.qsFileName = "doc";
+        stOleFile.fileData = srcData;
+    }
+    else if(qsDocType == "Excel.Sheet.8")
+    {
+        stOleFile.qsFileName = "tmp.xls";
+        stOleFile.fileData = srcData;
+    }
+    else if(qsDocType == "PowerPoint.Show.12")
+    {
+        stOleFile.qsFileName = "tmp.pptx";
+        GetOleFileData(srcData, stOleFile, "Package");
+    }
+    else if(qsDocType == "Word.Document.12")
+    {
+        stOleFile.qsFileName = "tmp.docx";
+        GetOleFileData(srcData, stOleFile, "Package");
+    }
+    else if(qsDocType == "Excel.Sheet.12")
+    {
+        stOleFile.qsFileName = "tmp.xlsx";
+        GetOleFileData(srcData, stOleFile, "Package");
+    }
+    else {
+
+    }
 }
 
 UtilityTool::UtilityTool() {}

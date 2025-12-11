@@ -19,6 +19,13 @@ enum EU_OperateType
     ReplaceType
 };
 
+enum EU_DocumentType
+{
+    WpsFileType,
+    WPPFileType,
+    ETFileType
+};
+
 struct ST_VarantFile
 {
     QString qsFileName;//AS:temp.zip
@@ -42,7 +49,7 @@ public:
      * bool[return]:返回是否成功
      */
     //out:srcData
-    static bool GetOleFileData(const QByteArray& srcData, ST_VarantFile &stOleFile);
+    static bool GetOleFileData(const QByteArray& srcData, ST_VarantFile &stOleFile, QString findName = QString());
     /*
      * in[zipBytes]:zip数据流
      * out[outData]:传出ole文件的二进制流
@@ -50,6 +57,8 @@ public:
      */
     //out:srcData
     static bool findOleDataFromZipMemory(const QByteArray& zipBytes, QByteArray& outData, QString& qsDocType);
+
+    static void GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentType docType);
 private:
     UtilityTool();
 };

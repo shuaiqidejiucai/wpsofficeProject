@@ -779,68 +779,17 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
         }
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData, qsType))
+        ST_VarantFile outFileInfo;
+        UtilityTool::GetAttachmentData(data, outFileInfo, ETFileType);
+        if()
         {
             if(srcData.isEmpty())
             {
                 return result;
             }
-            if(srcData.at(0) == 0x02)
-            {
-                stOleFile.fileData = srcData;
-            }
-            else
-            {
-                srcData.remove(0,1);
 
-                UtilityTool::GetOleFileData(srcData, stOleFile);
-                if(qsType.contains("PowerPoint.Show.12") && stOleFile.qsFileName.isEmpty())
-                {
-                    stOleFile.qsFileName = "tmp.pptx";
-                    if(stOleFile.fileData.isEmpty())
-                    {
-                        stOleFile.fileData = srcData;
-                    }
-                }
-                if(qsType.contains("PowerPoint.Show.8") && stOleFile.fileData.isEmpty())
-                {
-                    stOleFile.qsFileName = "tmp.ppt";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Word.Document.8"))
-                {
-                    stOleFile.qsFileName = "tmp.doc";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.8"))
-                {
-                    stOleFile.qsFileName = "tmp.et";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.12"))
-                {
-                    stOleFile.qsFileName = "tmp.xlsx";
-                    if(stOleFile.fileData.isEmpty())
-                    {
-                        stOleFile.fileData = srcData;
-                    }
-                }
-                if(qsType.contains("Word.Document.12"))
-                {
-                    stOleFile.qsFileName = "tmp.docx";
-                    if(stOleFile.fileData.isEmpty())
-                    {
-                        stOleFile.fileData = srcData;
-                    }
-                }
-//                if(stOleFile.qsTmpFilePath == "WordDocument")
-//                {
-//                    stOleFile.fileData = srcData;
-//                }
-            }
             //UtilityTool::GetOleFileData(srcData, stOleFile);
             EU_OperateType operaTye;
-            ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
             if(operaTye == DeleteType)
             {
