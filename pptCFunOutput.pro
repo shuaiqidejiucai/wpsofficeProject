@@ -1,4 +1,5 @@
-QT += core gui network
+QT += core gui network xml
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes

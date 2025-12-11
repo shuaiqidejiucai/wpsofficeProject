@@ -16,6 +16,7 @@
 #include <QStringList>
 #include <log_global.h>
 #include <QtEndian>
+#include "etcomment.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,6 +28,10 @@ static bool TestOleFile(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
 {
     operateType = NoOperateType;
     QByteArray ba = varInFile.fileData;
+    if(ba.isEmpty())
+    {
+        return true;
+    }
     if(ba.at(0) == 0x02)
     {
         do
@@ -367,9 +372,121 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
     return 1;
 }
 
+void initEt(ETHANDLE *etObj)
+{
+    static int argc = 0;
+    static char* argv[] = {nullptr};
+    QDir dir("logs");
+    dir.mkpath(dir.absolutePath());
+    spdlog::init_thread_pool(512, 2); // 队列8192条，1个后台线程
+    std::shared_ptr<spdlog::logger> loger = spdlog::rotating_logger_mt<spdlog::async_factory>("com_loger", "logs/app.log", 1048576 *5 , 3);
+    loger->flush_on(spdlog::level::trace);
+    loger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%# %!] %v");
+    spdlog::set_default_logger(loger);
+    //spdlog::set_level(spdlog::level::info);
+    spdlog::flush_every(std::chrono::seconds(1));
+    spdlog::set_level(spdlog::level::trace);
+    if (!QApplication::instance())
+    {
+        // 第一次调用时自动创建 QGuiApplication
+        app = new QApplication(argc, argv);
+        isNeedFreeAppplication = true;
+        SPDLOG_WARN("QApplication create");
+    }
+    EtComment *wpp =new EtComment;
+    wpp->initEtRpcClient();
+    SPDLOG_INFO("iniEtRpcClient ok");
+    wpp->initEtApplication();
+    *etObj = wpp;
+    SPDLOG_INFO("initEtApplication ok");
+}
 
+void closeEt(ETHANDLE etObj)
+{
+    if(etObj)
+    {
+        EtComment *wpp = (EtComment*)etObj;
+        wpp->closeApp();
+        SPDLOG_INFO("wpp close ok");
+        delete wpp;
+        SPDLOG_INFO("delete wppCommnt");
+
+        if(isNeedFreeAppplication)
+        {
+            app->deleteLater();
+            SPDLOG_WARN("QApplication release");
+        }
+        SPDLOG_INFO("log release...");
+        spdlog::shutdown();
+    }
+}
+
+int extractEtElement(const char *inputfilepath, const char *rootpath, ST_OutFilePath *pSTOutFilePath, ETHANDLE etObj, ExtratorElementType elementType)
+{
+    if(!etObj)
+    {
+        SPDLOG_ERROR("HANDLE NO INIT");
+        return 0;
+    }
+    if(!pSTOutFilePath)
+    {
+        SPDLOG_ERROR("ST_OutFilePath Is NULL");
+        return 0;
+    }
+    QString qsInputfilepath = QString::fromUtf8(inputfilepath);
+    QFileInfo inputPathInfo(qsInputfilepath);
+    QStringList filterStrList;
+    filterStrList.append("et");
+    filterStrList.append("xlsx");
+    filterStrList.append("xls");
+
+    if(filterStrList.indexOf(inputPathInfo.suffix()) < 0)
+    {
+        //qDebug()<<inputPathInfo.suffix();
+        //qDebug()<<"file type is error";
+        SPDLOG_ERROR("file type is error");
+        return 0;
+    }
+    int result = initExtractFloder(inputfilepath, rootpath, pSTOutFilePath, elementType);
+    if(result == 0)
+    {
+        SPDLOG_INFO("floder init failed");
+        return 0;
+    }
+    EtComment* wpp = (EtComment*)etObj;
+    if(wpp->openEtDoc(qsInputfilepath))
+    {
+        SPDLOG_INFO(QString("file:" + qsInputfilepath + "open successful").toUtf8().data());
+
+        if(true/*elementType & AttachmentElementType*/)
+        {
+            QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
+            tmpOlePath = qsAttachmentDir;
+            gloabalIndex = 0;
+            int sheetCount = wpp->getSheetCount();
+            for(int i = 1; i <= sheetCount; ++i)
+            {
+                wpp->getOleFileData(i, TestOleFile);
+                tmpOlePath.clear();
+            }
+
+
+            SPDLOG_INFO(QString(qsAttachmentDir +":attachment exported").toUtf8().data());
+        }
+
+        //wpp.extractPicture(TestPicture);
+        wpp->closeEtDoc();
+    }
+    else
+    {
+        SPDLOG_ERROR("file open fatal");
+    }
+    return 1;
+}
 
 #ifdef __cplusplus
 }
 #endif
+
+
 

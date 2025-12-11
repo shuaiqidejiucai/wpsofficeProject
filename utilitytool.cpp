@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QBuffer>
 #include <quazipfile.h>
+#include <QTextCodec>
+#include <QDomDocument>
 static QByteArray readItemData(libolecf_item_t* item)
 {
     uint32_t size = 0;
@@ -16,11 +18,11 @@ static QByteArray readItemData(libolecf_item_t* item)
     buf.resize((int)size);
 
     ssize_t read_count = libolecf_stream_read_buffer(
-        item,
-        reinterpret_cast<uint8_t*>(buf.data()),
-        (size_t)size,
-        NULL
-        );
+                item,
+                reinterpret_cast<uint8_t*>(buf.data()),
+                (size_t)size,
+                NULL
+                );
 
     if (read_count < 0) return {};
     buf.resize((int)read_count);
@@ -67,16 +69,18 @@ static bool parseOle10Native(const QByteArray& src, ST_VarantFile & stOleFile)
 
         quint32 filePrexLength = rdLE16(p);
 
+        QTextCodec * code = QTextCodec::codecForName("GBK");
+
         QByteArray label = readZ(p);
         if (label.isEmpty()) continue;
 
         QByteArray file = readZ(p);
         if (file.isEmpty()) continue;
-        stOleFile.qsFileName = file;
+        stOleFile.qsFileName = code->toUnicode(file);
 
         QByteArray cmd = readZ(p);
         if (cmd.isEmpty()) continue;
-        stOleFile.qsFilePath = cmd;
+        stOleFile.qsFilePath = code->toUnicode(cmd);
 
         quint32 mark = rdLE32(p);
         p = p + 4;
@@ -84,7 +88,7 @@ static bool parseOle10Native(const QByteArray& src, ST_VarantFile & stOleFile)
         p = p + 4;
         QByteArray tempPathBa = readZ(p);
         if (tempPathBa.isEmpty()) continue;
-        stOleFile.qsTmpFilePath = tempPathBa;
+        stOleFile.qsTmpFilePath = code->toUnicode(tempPathBa);
 
         quint32 datasize = rdLE32(p);
         p = p + 4;
@@ -151,14 +155,28 @@ static void getOle10NativeData(libolecf_item_t* root_item ,ST_VarantFile & stOle
         libolecf_item_get_utf8_name(sub_item, (uint8_t*)name, name_size, NULL);
         QString itemName(name);
         delete[] name;
+
         if (itemName.endsWith("Ole10Native"))
         {
             QByteArray ole10 = readItemData(sub_item);
             if (parseOle10Native(ole10, stOleFile))
             {
-                libolecf_item_free(&sub_item, nullptr);
+                //libolecf_item_free(&sub_item, nullptr);
             }
         }
+        else if (itemName.endsWith("Package", Qt::CaseInsensitive))
+        {
+            stOleFile.fileData = readItemData(sub_item);
+            //libolecf_item_free(&sub_item, nullptr);
+        }
+//        else if (itemName.contains("WordDocument", Qt::CaseInsensitive))
+//        {
+//            stOleFile.qsTmpFilePath = "WordDocument";
+//            stOleFile.qsFileName = "tmp.doc";
+//            //stOleFile.fileData = readItemData(sub_item);
+//            //libolecf_item_free(&sub_item, nullptr);
+//        }
+
         if (childItemCount > 0 /*&& outData.isEmpty()*/)
         {
             getOle10NativeData(sub_item, stOleFile);
@@ -183,10 +201,10 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOle
 
     // 2. 设置内存数据
     if (libbfio_memory_range_set(
-            bfio_handle,
-            reinterpret_cast<uint8_t*>(buffer.data()),
-            buffer.size(),
-            &bfio_error) != 1) {
+                bfio_handle,
+                reinterpret_cast<uint8_t*>(buffer.data()),
+                buffer.size(),
+                &bfio_error) != 1) {
         libbfio_handle_free(&bfio_handle, nullptr);
         return successful;
     }
@@ -203,10 +221,10 @@ bool UtilityTool::GetOleFileData(const QByteArray &srcData, ST_VarantFile &stOle
 
     // 使用内存句柄打开 OLECF
     if (libolecf_file_open_file_io_handle(
-            olecf2_file,
-            bfio_handle,
-            LIBOLECF_OPEN_READ,
-            &error) != 1)
+                olecf2_file,
+                bfio_handle,
+                LIBOLECF_OPEN_READ,
+                &error) != 1)
     {
         qCritical() << "Unable to open OLECF from memory.";
         libolecf_file_free(&olecf2_file, nullptr);
@@ -242,8 +260,41 @@ bool checkOleHeader(const QByteArray& srcData)
     }
     return false;
 }
+#include <QTextCodec>
+#include <QDomElement>
+QString GetAttachmentDocumentType(QByteArray xmlData)
+{
+    //    "clipboard/worksheets/worksheet1.xml"
+    //QTextCodec *code = QTextCodec::codecForName("GBK");
+    //QString xmlString = code->toUnicode(xmlData);
+    QDomDocument xmlDoc;
+    xmlDoc.setContent(xmlData);
+    QDomElement mainEle = xmlDoc.documentElement();
+    if(!mainEle.isNull())
+    {
+        QDomElement oldObjsNode = mainEle.firstChildElement("oleObjects");
+        if(!oldObjsNode.isNull())
+        {
+            QDomElement altEle = oldObjsNode.firstChildElement("mc:AlternateContent");
+            if(!altEle.isNull())
+            {
+                QDomElement backEle = altEle.firstChildElement("mc:Fallback");
+                if(!backEle.isNull())
+                {
+                    QDomElement oleEle = backEle.firstChildElement("oleObject");
+                    if(!oleEle.isNull())
+                    {
+                        QString qsID = oleEle.attribute("progId");
+                        return qsID;
+                    }
+                }
+            }
+        }
+    }
+    return QString();
+}
 
-bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArray &outData)
+bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArray &outData, QString &qsDocType)
 {
     bool findOleData = false;
     QBuffer buffer;
@@ -256,6 +307,7 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
     }
 
     QuaZip zip(&buffer);
+
     if (!zip.open(QuaZip::mdUnzip))
     {
         qWarning() << "QuaZip open fail, code =" << zip.getZipError();
@@ -268,6 +320,28 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
         // 目录条目
         if (name.endsWith('/'))
             continue;
+
+
+        if(name.contains("/worksheets/worksheet"))
+        {
+            if(name.split("/").last().endsWith(".xml"))
+            {
+                QuaZipFile zaf(&zip);
+                if (zaf.open(QIODevice::ReadOnly))
+                {
+                    QByteArray tmpData = zaf.readAll();
+                    qsDocType = GetAttachmentDocumentType(tmpData);
+//                    QString nameT = name.split("/").last();
+//                    QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/" + nameT);
+//                    if(file.open(QIODevice::WriteOnly))
+//                    {
+//                        file.write(tmpData);
+//                        file.close();
+//                    }
+                    zaf.close();
+                }
+            }
+        }
 
         if(!name.contains("oleObject") && !name.contains("embeddings"))
         {
@@ -291,27 +365,56 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
             }
             heard = QByteArray::fromHex("02");
             qsFileName = name.split("/").last();
-        }
+            QuaZipFile zf(&zip);
+            if (!zf.open(QIODevice::ReadOnly))
+            {
+                qWarning() << "open file fail:" << name;
+                continue;
+            }
+            findOleData = true;
 
-        QuaZipFile zf(&zip);
-        if (!zf.open(QIODevice::ReadOnly))
+            if(qsFileName.contains("oleobject",Qt::CaseSensitivity::CaseInsensitive))
+            {
+                QByteArray oleObjectData = zf.readAll();
+                //                QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/ole.bin");
+                //                if(file.open(QIODevice::WriteOnly))
+                //                {
+                //                    file.write(oleObjectData);
+                //                    file.close();
+                //                }
+                QByteArray ba = QByteArray::fromHex("01") + oleObjectData;
+                dstData = ba;
+                zf.close();
+                continue;
+            }
+
+            QByteArray ba = zf.readAll();
+            QByteArray sizeBytes;
+            sizeBytes.resize(4);
+            int baSize = ba.size();
+
+            QByteArray fileNameData=qsFileName.toUtf8().leftJustified(128, '\0', true);
+
+            qToLittleEndian((quint32)baSize,(uchar*)sizeBytes.data());
+
+            dstData = dstData + heard + QByteArray::fromHex("80") +
+                    fileNameData + sizeBytes + ba;
+            zf.close();
+            break;
+        }
+        else
         {
-            qWarning() << "open file fail:" << name;
-            continue;
+            QuaZipFile zf(&zip);
+            if (!zf.open(QIODevice::ReadOnly))
+            {
+                qWarning() << "open file fail:" << name;
+                continue;
+            }
+            findOleData = true;
+            dstData = heard + zf.readAll();
+            zf.close();
+            break;
         }
-        findOleData = true;
-        QByteArray ba = zf.readAll();
-        QByteArray sizeBytes;
-        sizeBytes.resize(4);
-        int baSize = ba.size();
-
-        QByteArray fileNameData=qsFileName.toUtf8().leftJustified(128, '\0', true);
-
-        qToLittleEndian((quint32)baSize,(uchar*)sizeBytes.data());
-
-        dstData = dstData + heard + QByteArray::fromHex("80") +
-                fileNameData + sizeBytes + ba;
-        zf.close();
     }
     zip.close();
     outData = dstData;

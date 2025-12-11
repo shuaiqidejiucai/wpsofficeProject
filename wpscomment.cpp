@@ -615,7 +615,8 @@ bool WpsComment::getOldFileDataForShape(kfc::ks_stdptr<wpsapi::Shapes> shapesPtr
         }
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        QString qsType2;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
         {
             if(srcData.isEmpty())
             {
@@ -731,7 +732,8 @@ bool WpsComment::getOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShape
         }
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        QString qsType2;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
         {
             if(srcData.isEmpty())
             {

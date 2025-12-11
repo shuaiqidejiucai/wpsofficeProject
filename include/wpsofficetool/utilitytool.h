@@ -49,7 +49,7 @@ public:
      * bool[return]:返回是否成功
      */
     //out:srcData
-    static bool findOleDataFromZipMemory(const QByteArray& zipBytes, QByteArray& outData);
+    static bool findOleDataFromZipMemory(const QByteArray& zipBytes, QByteArray& outData, QString& qsDocType);
 private:
     UtilityTool();
 };

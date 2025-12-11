@@ -11,6 +11,8 @@
 #include <utilitytool.h>
 #include <log_global.h>
 #include<QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -867,12 +869,20 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
         return result;
     }
 
+    MsoShapeType shapeType;
+    shapePtr->get_Type(&shapeType);
     shapePtr->Copy();
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
+        ST_VarantFile stOleFile;
         QStringList qsMimeDataKeyList = mdata->formats();
         QString qsMimeData;
+        QByteArray tmpData = mdata->data("Kingsoft Shapes Tag");
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(tmpData);
+        QJsonObject jsonObj = jsonDoc.object();
+        QString qsType = jsonObj.value("objectsTag").toString();
+
         for(const QString& qsTmp : qsMimeDataKeyList)
         {
             if(qsTmp.contains(WPPMimeDataKey) && qsTmp.contains("Format"))
@@ -887,21 +897,42 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
         }
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        QString qsType2;
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
         {
             if(srcData.isEmpty())
             {
                 return result;
             }
-            ST_VarantFile stOleFile;
+
             if(srcData.at(0) == 0x02)
             {
                 stOleFile.fileData = srcData;
             }
             else
             {
+                srcData.remove(0,1);
                 UtilityTool::GetOleFileData(srcData, stOleFile);
+                if(qsType.contains("PowerPoint") && stOleFile.qsFileName.isEmpty())
+                {
+                    stOleFile.qsFileName = "tmp.pptx";
+                }
+                if(qsType.contains("Word.Document.8"))
+                {
+                    stOleFile.qsFileName = "tmp.doc";
+                    stOleFile.fileData = srcData;
+                }
+                if(qsType.contains("Excel.Sheet.8"))
+                {
+                    stOleFile.qsFileName = "tmp.et";
+                    stOleFile.fileData = srcData;
+                }
+                if(qsType.contains("Excel.Sheet.12"))
+                {
+                    stOleFile.qsFileName = "tmp.xlsx";
+                }
             }
+
 
             EU_OperateType operaTye;
             ST_VarantFile outFileInfo;

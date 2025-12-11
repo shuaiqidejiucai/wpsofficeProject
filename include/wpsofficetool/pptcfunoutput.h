@@ -20,7 +20,7 @@ enum ExtratorElementType
 };
 
 typedef void*  WPPHANDLE ;
-
+typedef void*  ETHANDLE ;
 //output:wppObj
 void initWPP(WPPHANDLE *wppObj);
 //input:wppObj
@@ -32,6 +32,14 @@ void closeWPP(WPPHANDLE wppObj);
 //input:wppObj
 
 int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePath* pSTOutFilePath, WPPHANDLE wppObj, ExtratorElementType elementType = AllElementType);
+
+//output:etObj
+void initEt(ETHANDLE *etObj);
+//input:etObj
+void closeEt(ETHANDLE etObj);
+
+//this is fun only can extractor attachment
+int extractEtElement(const char *inputfilepath, const char *rootpath, ST_OutFilePath* pSTOutFilePath, ETHANDLE etObj, ExtratorElementType elementType = AllElementType);
 
 #ifdef __cplusplus
 }

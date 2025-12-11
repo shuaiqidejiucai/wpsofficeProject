@@ -1,4 +1,4 @@
-QT       += core gui network
+QT       += core gui network xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TEMPLATE = app
@@ -15,7 +15,8 @@ INCLUDEPATH+=$$INCLUDEDIR/wpsofficetool \
              $$INCLUDEDIR
 
 SOURCES += \
-    main.cpp \
+#    main.cpp \
+    etmain.cpp \
     mainwindow.cpp \
     mytcpserver.cpp
 

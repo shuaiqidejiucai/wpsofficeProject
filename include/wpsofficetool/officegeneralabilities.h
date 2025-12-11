@@ -20,7 +20,8 @@ enum EU_FileType
 };
 const QString WPSMimeDataKey = "Kingsoft WPS";
 const QString WPPMimeDataKey = "Kingsoft WPP";
-const QString ETMimeDataKey = "Kingsoft ET";
+//const QString ETMimeDataKey = "Kingsoft ET";
+const QString ETMimeDataKey = "WPS Spreadsheets";
 struct WppApiTypes {
     using Shape = wppapi::Shape;
     using MsoShapeType = wppapi::MsoShapeType;

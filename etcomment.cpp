@@ -8,6 +8,8 @@
 #include <QBuffer>
 #include "libolecf.h"
 #include <QtEndian>
+#include <QJsonDocument>
+#include <QJsonObject>
 using namespace etapi;
 using namespace kfc;
 #define ET_LCID ((long)2052)
@@ -754,8 +756,15 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
     const QMimeData *  mdata = qApp->clipboard()->mimeData();
     if(mdata)
     {
+        ST_VarantFile stOleFile;
         QStringList qsMimeDataKeyList = mdata->formats();
         QString qsMimeData;
+        QByteArray tmpData = mdata->data("Kingsoft Shapes Tag");
+
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(tmpData);
+        QJsonObject jsonObj = jsonDoc.object();
+        QString qsType = jsonObj.value("objectsTag").toString();
+
         for(const QString& qsTmp : qsMimeDataKeyList)
         {
             if(qsTmp.contains(ETMimeDataKey) && qsTmp.contains("Format"))
@@ -770,14 +779,55 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
         }
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData))
+        if(UtilityTool::findOleDataFromZipMemory(data, srcData, qsType))
         {
             if(srcData.isEmpty())
             {
                 return result;
             }
-            ST_VarantFile stOleFile;
-            UtilityTool::GetOleFileData(srcData, stOleFile);
+            if(srcData.at(0) == 0x02)
+            {
+                stOleFile.fileData = srcData;
+            }
+            else
+            {
+                srcData.remove(0,1);
+
+                UtilityTool::GetOleFileData(srcData, stOleFile);
+                if(qsType.contains("PowerPoint.Show.12") && stOleFile.qsFileName.isEmpty())
+                {
+                    stOleFile.qsFileName = "tmp.pptx";
+                }
+                if(qsType.contains("PowerPoint.Show.8") && stOleFile.fileData.isEmpty())
+                {
+                    stOleFile.qsFileName = "tmp.ppt";
+                    stOleFile.fileData = srcData;
+                }
+                if(qsType.contains("Word.Document.8"))
+                {
+                    stOleFile.qsFileName = "tmp.doc";
+                    stOleFile.fileData = srcData;
+                }
+                if(qsType.contains("Excel.Sheet.8"))
+                {
+                    stOleFile.qsFileName = "tmp.et";
+                    stOleFile.fileData = srcData;
+                }
+                if(qsType.contains("Excel.Sheet.12"))
+                {
+                    stOleFile.qsFileName = "tmp.xlsx";
+                }
+                if(qsType.contains("Word.Document.12"))
+                {
+                    stOleFile.qsFileName = "tmp.docx";
+                    stOleFile.fileData = srcData;
+                }
+//                if(stOleFile.qsTmpFilePath == "WordDocument")
+//                {
+//                    stOleFile.fileData = srcData;
+//                }
+            }
+            //UtilityTool::GetOleFileData(srcData, stOleFile);
             EU_OperateType operaTye;
             ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);

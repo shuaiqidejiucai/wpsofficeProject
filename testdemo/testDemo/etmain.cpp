@@ -55,6 +55,25 @@ void killWppProcess()
     }
 }
 
+void killEtProcess()
+{
+    // 查找所有名为 wpp 的进程
+    QProcess psProcess;
+    psProcess.start("pgrep", QStringList() << "et");
+    psProcess.waitForFinished();
+    QByteArray output = psProcess.readAllStandardOutput();
+    QList<QByteArray> pidList = output.split('\n');
+
+    for (const QByteArray& pid : pidList) {
+        bool ok = false;
+        int pidInt = pid.trimmed().toInt(&ok);
+        if (ok && pidInt > 0) {
+            // 杀死进程
+            QProcess::execute("kill", QStringList() << "-9" << QString::number(pidInt));
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
 //    QApplication a(argc, argv);
@@ -65,24 +84,24 @@ int main(int argc, char *argv[])
     Q_UNUSED(argc)
     Q_UNUSED(argv)
 
-    typedef void (*initWPP)(WPPHANDLE*);
-    typedef void (*closeWPP)(WPPHANDLE);
-    typedef int (*extractElement)(const char*, const char*, ST_OutFilePath * ,WPPHANDLE, ExtratorElementType);
+    typedef void (*initEt)(ETHANDLE*);
+    typedef void (*closeEt)(ETHANDLE);
+    typedef int (*extractEtElement)(const char*, const char*, ST_OutFilePath * ,ETHANDLE, ExtratorElementType);
     QString qsLibPath;
 #ifdef PPTCFUNLIBPATH
     qsLibPath = QString(PPTCFUNLIBPATH) + "/pptcfunoutout";
 #endif
-    killWppProcess();
+    killEtProcess();
     QLibrary lib(qsLibPath);
     if (lib.load())
     {
-        initWPP initWPPFun = (initWPP)lib.resolve("initWPP");
+        initEt initWPPFun = (initEt)lib.resolve("initEt");
         if (initWPPFun)
         {
-            WPPHANDLE wppObj = nullptr;
+            ETHANDLE wppObj = nullptr;
             initWPPFun(&wppObj);
 
-            extractElement pptCFunOutput = (extractElement)lib.resolve("extractElement");
+            extractEtElement pptCFunOutput = (extractEtElement)lib.resolve("extractEtElement");
             if (pptCFunOutput)
             {
                 QElapsedTimer time;
@@ -91,13 +110,13 @@ int main(int argc, char *argv[])
                 {
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     ST_OutFilePath pSTOutFilePath = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/inxlsx.ppt", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",&pSTOutFilePath, wppObj, AllElementType);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/indoc.et", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",&pSTOutFilePath, wppObj, AllElementType);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";
             }
 
-            closeWPP closeWPPFun = (closeWPP)lib.resolve("closeWPP");
+            closeEt closeWPPFun = (closeEt)lib.resolve("closeEt");
             if(closeWPPFun)
             {
                 closeWPPFun(wppObj);
