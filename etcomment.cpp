@@ -797,6 +797,10 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
                 if(qsType.contains("PowerPoint.Show.12") && stOleFile.qsFileName.isEmpty())
                 {
                     stOleFile.qsFileName = "tmp.pptx";
+                    if(stOleFile.fileData.isEmpty())
+                    {
+                        stOleFile.fileData = srcData;
+                    }
                 }
                 if(qsType.contains("PowerPoint.Show.8") && stOleFile.fileData.isEmpty())
                 {
@@ -816,11 +820,18 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
                 if(qsType.contains("Excel.Sheet.12"))
                 {
                     stOleFile.qsFileName = "tmp.xlsx";
+                    if(stOleFile.fileData.isEmpty())
+                    {
+                        stOleFile.fileData = srcData;
+                    }
                 }
                 if(qsType.contains("Word.Document.12"))
                 {
                     stOleFile.qsFileName = "tmp.docx";
-                    stOleFile.fileData = srcData;
+                    if(stOleFile.fileData.isEmpty())
+                    {
+                        stOleFile.fileData = srcData;
+                    }
                 }
 //                if(stOleFile.qsTmpFilePath == "WordDocument")
 //                {
