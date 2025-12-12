@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
                 {
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     ST_OutFilePath pSTOutFilePath = {0};
-                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/indoc.ppt", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",&pSTOutFilePath, wppObj, AllElementType);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/bugwenjian/indocx.ppt", "/home/ft2000/mjcenv/dps-ppt/bugwenjian",&pSTOutFilePath, wppObj, AllElementType);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";

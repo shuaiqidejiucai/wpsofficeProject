@@ -759,11 +759,6 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
         ST_VarantFile stOleFile;
         QStringList qsMimeDataKeyList = mdata->formats();
         QString qsMimeData;
-        QByteArray tmpData = mdata->data("Kingsoft Shapes Tag");
-
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(tmpData);
-        QJsonObject jsonObj = jsonDoc.object();
-        QString qsType = jsonObj.value("objectsTag").toString();
 
         for(const QString& qsTmp : qsMimeDataKeyList)
         {
@@ -778,16 +773,10 @@ bool EtComment::getOldFileDataForShape(kfc::ks_stdptr<etapi::IShapes> shapesPtr,
             return result;
         }
         QByteArray data = mdata->data(qsMimeData);
-        QByteArray srcData;
         ST_VarantFile outFileInfo;
-        UtilityTool::GetAttachmentData(data, outFileInfo, ETFileType);
-        if()
+        UtilityTool::GetAttachmentData(data, stOleFile, ETFileType);
+        if(!stOleFile.fileData.isEmpty())
         {
-            if(srcData.isEmpty())
-            {
-                return result;
-            }
-
             //UtilityTool::GetOleFileData(srcData, stOleFile);
             EU_OperateType operaTye;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);

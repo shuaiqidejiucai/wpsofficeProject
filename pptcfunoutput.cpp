@@ -32,46 +32,6 @@ static bool TestOleFile(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_O
     {
         return true;
     }
-    if(ba.at(0) == 0x02)
-    {
-        do
-        {
-            if(ba.size() < 2)
-            {
-                break;
-            }
-            int fileNameLength = (unsigned char)ba.at(1);
-            if(ba.size() < 130)
-            {
-                break;
-            }
-            QByteArray fileNameData = ba.mid(2, 128);
-            QString qsFileName = QString::fromUtf8(fileNameData);
-            if(ba.size() < 134)
-            {
-                break;
-            }
-            QByteArray fileDataSize = ba.mid(130,4);
-            int dataLength = qFromLittleEndian<int>(fileDataSize.constData() + 0);
-            int sss = ba.size();
-            if(ba.size() < 134 + dataLength)
-            {
-                break;
-            }
-            QByteArray data = ba.mid(134, dataLength);
-            ba.remove(0, 134 + dataLength);
-
-            QFile file(tmpOlePath + "/" +QString::number(gloabalIndex) + qsFileName);
-            if(file.open(QIODevice::WriteOnly))
-            {
-                file.write(data);
-                file.close();
-                gloabalIndex++;
-            }
-        }
-        while (!ba.isEmpty());
-        return true;
-    }
 
     QFile file(tmpOlePath + "/" +QString::number(gloabalIndex) + varInFile.qsFileName);
     if(file.open(QIODevice::WriteOnly))

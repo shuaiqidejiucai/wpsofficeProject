@@ -878,10 +878,6 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
         ST_VarantFile stOleFile;
         QStringList qsMimeDataKeyList = mdata->formats();
         QString qsMimeData;
-        QByteArray tmpData = mdata->data("Kingsoft Shapes Tag");
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(tmpData);
-        QJsonObject jsonObj = jsonDoc.object();
-        QString qsType = jsonObj.value("objectsTag").toString();
 
         for(const QString& qsTmp : qsMimeDataKeyList)
         {
@@ -896,46 +892,12 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
             return result;
         }
         QByteArray data = mdata->data(qsMimeData);
-        QByteArray srcData;
-        QString qsType2;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
+        ST_VarantFile outFileInfo;
+        UtilityTool::GetAttachmentData(data, stOleFile, WPPFileType);
+
+        if(!stOleFile.fileData.isEmpty())
         {
-            if(srcData.isEmpty())
-            {
-                return result;
-            }
-
-            if(srcData.at(0) == 0x02)
-            {
-                stOleFile.fileData = srcData;
-            }
-            else
-            {
-                srcData.remove(0,1);
-                UtilityTool::GetOleFileData(srcData, stOleFile);
-                if(qsType.contains("PowerPoint") && stOleFile.qsFileName.isEmpty())
-                {
-                    stOleFile.qsFileName = "tmp.pptx";
-                }
-                if(qsType.contains("Word.Document.8"))
-                {
-                    stOleFile.qsFileName = "tmp.doc";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.8"))
-                {
-                    stOleFile.qsFileName = "tmp.et";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.12"))
-                {
-                    stOleFile.qsFileName = "tmp.xlsx";
-                }
-            }
-
-
             EU_OperateType operaTye;
-            ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
             if(operaTye == DeleteType)
             {

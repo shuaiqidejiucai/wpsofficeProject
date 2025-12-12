@@ -264,8 +264,14 @@ bool checkOleHeader(const QByteArray& srcData)
     return false;
 }
 
-QString GetAttachmentDocumentType(QByteArray xmlData)
+QString GetAttachmentDocumentType(QByteArray xmlData, EU_DocumentType docType)
 {
+    QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/testT.xml");
+    if(file.open(QIODevice::WriteOnly))
+    {
+        file.write(xmlData);
+        file.close();
+    }
     //    "clipboard/worksheets/worksheet1.xml"
     //QTextCodec *code = QTextCodec::codecForName("GBK");
     //QString xmlString = code->toUnicode(xmlData);
@@ -275,7 +281,19 @@ QString GetAttachmentDocumentType(QByteArray xmlData)
     QStack<QDomElement> elementStack;
     elementStack.push(mainEle);
 
-    QDomElement mcBackNode;
+    QString oldTag;
+    switch (docType)
+    {
+    case WpsFileType:oldTag = "";
+        break;
+    case WPPFileType:oldTag = "p:oleObj";
+        break;
+    case ETFileType:oldTag = "oleObject";
+        break;
+    default:
+        break;
+    }
+    QDomNode mcBackNode;
     while (!elementStack.isEmpty())
     {
         QDomElement element = elementStack.pop();
@@ -289,7 +307,7 @@ QString GetAttachmentDocumentType(QByteArray xmlData)
                 {
                     if(node.toElement().tagName() == "mc:Fallback")
                     {
-                        mcBackNode = node.toElement();
+                        mcBackNode = node;
                         break;
                     }
                     elementStack.push(node.toElement());
@@ -301,14 +319,10 @@ QString GetAttachmentDocumentType(QByteArray xmlData)
             }
         }
     }
-    if(mcBackNode.isNull())
+
+    if(!mcBackNode.isNull())
     {
-        return QString();
-    }
-    QDomElement backEle = mcBackNode.firstChildElement("mc:Fallback");
-    if(!backEle.isNull())
-    {
-        QDomElement oleEle = backEle.firstChildElement("oleObject");
+        QDomElement oleEle = mcBackNode.firstChildElement(oldTag);
         if(!oleEle.isNull())
         {
             QString qsID = oleEle.attribute("progId");
@@ -367,14 +381,14 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
                 if (zaf.open(QIODevice::ReadOnly))
                 {
                     QByteArray tmpData = zaf.readAll();
-                    qsDocType = GetAttachmentDocumentType(tmpData);
-//                    QString nameT = name.split("/").last();
-//                    QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/" + nameT);
-//                    if(file.open(QIODevice::WriteOnly))
-//                    {
-//                        file.write(tmpData);
-//                        file.close();
-//                    }
+                    //qsDocType = GetAttachmentDocumentType(tmpData, );
+                    //                    QString nameT = name.split("/").last();
+                    //                    QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/" + nameT);
+                    //                    if(file.open(QIODevice::WriteOnly))
+                    //                    {
+                    //                        file.write(tmpData);
+                    //                        file.close();
+                    //                    }
                     zaf.close();
                 }
             }
@@ -491,7 +505,7 @@ void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &s
         {
         case WpsFileType:qsCompareFilePath = "";
             break;
-        case WPPFileType:qsCompareFilePath = "/drawings/drawing[0-9]+.xml";
+        case WPPFileType:qsCompareFilePath = "/drawings/drawingEx.xml";
             break;
         case ETFileType:qsCompareFilePath = "/worksheets/worksheet[0-9]+.xml";
             break;
@@ -502,17 +516,17 @@ void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &s
         if(name.contains(QRegularExpression(qsCompareFilePath)))
         {
             QuaZipFile zaf(&zip);
-            if (!zaf.open(QIODevice::ReadOnly))
+            if (zaf.open(QIODevice::ReadOnly))
             {
                 QByteArray tmpData = zaf.readAll();
                 zaf.close();
-                qsDocType = GetAttachmentDocumentType(tmpData);
+                qsDocType = GetAttachmentDocumentType(tmpData, docType);
             }
         }
         else if (name.contains(QRegularExpression("/embeddings/")))
         {
             QuaZipFile zaf(&zip);
-            if (!zaf.open(QIODevice::ReadOnly))
+            if (zaf.open(QIODevice::ReadOnly))
             {
                 srcData = zaf.readAll();
                 zaf.close();
@@ -526,41 +540,84 @@ void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &s
         {
             break;
         }
-     }
+    }
+    if(docType == WPPFileType)
+    {
+        if(qsDocType == "PowerPoint.Show.8")
+        {
+            stOleFile.qsFileName = "tmp.ppt";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "Word.Document.8")
+        {
+            stOleFile.qsFileName = "tmp.doc";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "Excel.Sheet.8")
+        {
+            stOleFile.qsFileName = "tmp.xls";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "PowerPoint.Show.12")
+        {
+            stOleFile.qsFileName = "tmp.pptx";
+            GetOleFileData(srcData, stOleFile, "Package");
+        }
+        else if(qsDocType == "Word.Document.12")
+        {
+            stOleFile.qsFileName = "tmp.docx";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "Excel.Sheet.12")
+        {
+            stOleFile.qsFileName = "tmp.xlsx";
+            GetOleFileData(srcData, stOleFile, "Package");
 
-    if(qsDocType == "PowerPoint.Show.8")
-    {
-        stOleFile.qsFileName = "tmp.ppt";
-        stOleFile.fileData = srcData;
+        }
+        else
+        {
+            GetOleFileData(srcData, stOleFile);
+        }
     }
-    else if(qsDocType == "Word.Document.8")
+    else if(docType == ETFileType)
     {
-        stOleFile.qsFileName = "doc";
-        stOleFile.fileData = srcData;
-    }
-    else if(qsDocType == "Excel.Sheet.8")
-    {
-        stOleFile.qsFileName = "tmp.xls";
-        stOleFile.fileData = srcData;
-    }
-    else if(qsDocType == "PowerPoint.Show.12")
-    {
-        stOleFile.qsFileName = "tmp.pptx";
-        GetOleFileData(srcData, stOleFile, "Package");
-    }
-    else if(qsDocType == "Word.Document.12")
-    {
-        stOleFile.qsFileName = "tmp.docx";
-        GetOleFileData(srcData, stOleFile, "Package");
-    }
-    else if(qsDocType == "Excel.Sheet.12")
-    {
-        stOleFile.qsFileName = "tmp.xlsx";
-        GetOleFileData(srcData, stOleFile, "Package");
-    }
-    else {
+        if(qsDocType == "PowerPoint.Show.8")
+        {
+            stOleFile.qsFileName = "tmp.ppt";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "Word.Document.8")
+        {
+            stOleFile.qsFileName = "tmp.doc";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "Excel.Sheet.8")
+        {
+            stOleFile.qsFileName = "tmp.xls";
+            stOleFile.fileData = srcData;
+        }
+        else if(qsDocType == "PowerPoint.Show")
+        {
+            stOleFile.qsFileName = "tmp.pptx";
+            GetOleFileData(srcData, stOleFile, "Package");
+        }
 
+        else if(qsDocType == "Word.Document.12")
+        {
+            stOleFile.qsFileName = "tmp.docx";
+            GetOleFileData(srcData, stOleFile, "Package");
+        }
+        else if(qsDocType == "Excel.Sheet.12")
+        {
+            stOleFile.qsFileName = "tmp.xlsx";
+            stOleFile.fileData = srcData;
+        }
+        else
+        {
+            GetOleFileData(srcData, stOleFile);
+        }
     }
+
 }
 
 UtilityTool::UtilityTool() {}
