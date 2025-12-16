@@ -12,14 +12,23 @@
 #include <QtEndian>
 #include <QDomElement>
 #include <QStack>
-static QByteArray readItemData(libolecf_item_t* item)
+static QByteArray readItemData(libolecf_item_t* item, int readSize = -1)
 {
     uint32_t size = 0;
     if (libolecf_item_get_size(item, &size, NULL) != 1 || size == 0)
         return {};
 
     QByteArray buf;
-    buf.resize((int)size);
+    if(readSize == -1)
+    {
+        buf.resize((int)size);
+    }
+    else
+    {
+        size = readSize;
+        buf.resize(readSize);
+    }
+
 
     ssize_t read_count = libolecf_stream_read_buffer(
                 item,
@@ -618,6 +627,50 @@ void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &s
         }
     }
 
+}
+
+bool UtilityTool::findNameOleBinFromFile(const QString &fileName)
+{
+    libolecf_file_t* file = nullptr;
+    libolecf_item_t* item = nullptr;
+    libolecf_file_initialize(&file, nullptr);
+    libolecf_file_open(file, fileName.toUtf8().constData(), LIBOLECF_OPEN_READ, nullptr);
+
+    QByteArray currentUserStream;
+    libolecf_item_t* root_item = nullptr;
+    if (libolecf_file_get_root_item(file, &root_item, nullptr) == 1)
+    {
+        int number_of_sub_items = 0;
+        libolecf_item_get_number_of_sub_items(root_item, &number_of_sub_items, NULL);
+        for (int i = 0; i < number_of_sub_items; ++i)
+        {
+            libolecf_item_t* sub_item = NULL;
+            libolecf_item_get_sub_item(root_item, i, &sub_item, NULL);
+            int childItemCount = 0;
+            libolecf_item_get_number_of_sub_items(sub_item, &childItemCount, NULL);
+            size_t name_size = 0;
+            libolecf_item_get_utf8_name_size(sub_item, &name_size, NULL);
+            char* name = new char[name_size];
+            libolecf_item_get_utf8_name(sub_item, (uint8_t*)name, name_size, NULL);
+            QString itemName(name);
+            delete[] name;
+
+            if (itemName.endsWith("PowerPoint Document"))
+            {
+                currentUserStream = readItemData(sub_item, 4);
+            }
+            libolecf_item_free(&sub_item, nullptr);
+        }
+        libolecf_item_free(&root_item, nullptr);
+    }
+
+    libolecf_file_close(file, nullptr);
+    libolecf_file_free(&file, nullptr);
+
+
+    if (currentUserStream.size() != 4) return true;
+
+    return currentUserStream != QByteArray::fromHex("0F00E803");
 }
 
 UtilityTool::UtilityTool() {}

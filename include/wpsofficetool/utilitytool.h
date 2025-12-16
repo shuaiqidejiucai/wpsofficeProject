@@ -59,6 +59,8 @@ public:
     static bool findOleDataFromZipMemory(const QByteArray& zipBytes, QByteArray& outData, QString& qsDocType);
 
     static void GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentType docType);
+
+    static bool findNameOleBinFromFile(const QString& fileName);
 private:
     UtilityTool();
 };

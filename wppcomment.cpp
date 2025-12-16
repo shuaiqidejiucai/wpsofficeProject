@@ -35,7 +35,10 @@ bool WppComment::initWppApplication()
     }
     return false;
 }
-
+#include <libolecf.h>
+#include <libbfio_handle.h>
+#include <libolecf/libolecf_file.h>
+#include <libbfio_memory_range.h>
 bool WppComment::initWPPRpcClient()
 {
     HRESULT hr = createWppRpcInstance(&m_rpcClient);
@@ -68,6 +71,19 @@ bool WppComment::initWPPRpcClient()
     m_containWidget->hide();
     return true;
 }
+#include <QString>
+#include <QtEndian>
+bool isPptEncrypted(const QByteArray &currentUserStream) {
+    if (currentUserStream.size() < 16) return false;
+
+    const uchar* p = reinterpret_cast<const uchar*>(currentUserStream.constData());
+    quint16 recType = qFromLittleEndian<quint16>(p + 2); // 0x0FF6
+    quint32 len = qFromLittleEndian<quint32>(p + 4);
+    quint16 docVer = qFromLittleEndian<quint16>(p + 14);
+
+    // 加密特征：docFileVersion=0 且长度异常短
+    return (docVer == 0x0000 && len < 30);
+}
 
 bool WppComment::openWPPDoc(const QString &fileName)
 {
@@ -80,7 +96,16 @@ bool WppComment::openWPPDoc(const QString &fileName)
     wppapi::MsoTriState untitled = msoFalse;
     wppapi::MsoTriState withWindow = msoFalse;
     ks_stdptr<_Presentation> spPresentation;
+
+
+    bool ok = UtilityTool::findNameOleBinFromFile(fileName);
+
+    if(ok)
+    {
+        return false;
+    }
     HRESULT hr = m_spDocs->Open(filename, readOnly, untitled, withWindow, (Presentation**)&spPresentation);
+
 
     if (SUCCEEDED(hr))
     {
@@ -90,6 +115,7 @@ bool WppComment::openWPPDoc(const QString &fileName)
     }
     else
     {
+        qDebug()<< HRESULT_CODE(hr);
         qDebug() << "open fail";
     }
 
