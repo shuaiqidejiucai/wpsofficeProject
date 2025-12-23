@@ -605,7 +605,7 @@ void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &s
             stOleFile.qsFileName = "tmp.xls";
             stOleFile.fileData = srcData;
         }
-        else if(qsDocType == "PowerPoint.Show")
+        else if(qsDocType == "PowerPoint.Show" || qsDocType == "PowerPoint.Show.12")
         {
             stOleFile.qsFileName = "tmp.pptx";
             GetOleFileData(srcData, stOleFile, "Package");
@@ -634,8 +634,12 @@ bool UtilityTool::findNameOleBinFromFile(const QString &fileName)
     libolecf_file_t* file = nullptr;
     libolecf_item_t* item = nullptr;
     libolecf_file_initialize(&file, nullptr);
-    libolecf_file_open(file, fileName.toUtf8().constData(), LIBOLECF_OPEN_READ, nullptr);
+    int errorCode = libolecf_file_open(file, fileName.toUtf8().constData(), LIBOLECF_OPEN_READ, nullptr);
 
+    if(errorCode == -1)
+    {
+        return false;
+    }
     QByteArray currentUserStream;
     libolecf_item_t* root_item = nullptr;
     if (libolecf_file_get_root_item(file, &root_item, nullptr) == 1)
