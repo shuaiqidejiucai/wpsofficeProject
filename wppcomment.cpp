@@ -132,6 +132,59 @@ bool WppComment::closeWPPDoc()
     return false;
 }
 
+#include <ksoapi/ksoapi.h>
+QStringList GetSmartArtText(ks_stdptr<Shape> tmpShape)
+{
+    QStringList qsTextList;
+    MsoShapeType tmpShapeType;
+    tmpShape->get_Type(&tmpShapeType);
+
+    if(tmpShapeType == MsoShapeType::msoSmartArt)
+    {
+        ks_stdptr<SmartArt> smartArtPtr;
+        tmpShape->get_SmartArt(&smartArtPtr);
+        if(smartArtPtr)
+        {
+            ks_stdptr<ksoapi::SmartArtNodes> nodesPtr;
+            smartArtPtr->get_AllNodes(&nodesPtr);
+            if(nodesPtr)
+            {
+                int nodeCount = 0;
+                nodesPtr->get_Count(&nodeCount);
+                for(int nodeIndex = 1; nodeIndex <= nodeCount; ++nodeIndex)
+                {
+                    VARIANT nodeIndexVar;
+                    VariantInit(&nodeIndexVar);
+                    V_VT(&nodeIndexVar) = VT_I4;
+                    V_I4(&nodeIndexVar) = nodeIndex;
+                    ks_stdptr<ksoapi::SmartArtNode> nodePtr;
+                    nodesPtr->get_Item(nodeIndexVar, &nodePtr);
+                    if(nodePtr)
+                    {
+                        ks_stdptr<ksoapi::TextFrame2> frame2Ptr;
+                        nodePtr->get_TextFrame2(&frame2Ptr);
+                        if(frame2Ptr)
+                        {
+                            ks_stdptr<ksoapi::TextRange2> textRange2Ptr;
+                            frame2Ptr->get_TextRange(&textRange2Ptr);
+                            if(textRange2Ptr)
+                            {
+                               ks_bstr textPtr;
+                               textRange2Ptr->get_Text(&textPtr);
+                               QString qsText = GetBSTRText(textPtr);
+                               qsTextList.append(qsText);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //
+
+        }
+    }
+    return qsTextList;
+}
 
 QStringList WppComment::GetWPPText()
 {
@@ -171,7 +224,7 @@ QStringList WppComment::GetWPPText()
         }
         int shapeCount = 0;
         shapesPtr->get_Count(&shapeCount);
-        for(int q = 1; q <= shapeCount + 1; ++q)
+        for(int q = 1; q <= shapeCount; ++q)
         {
             VARIANT shapeIndex;
             VariantInit(&shapeIndex);
@@ -195,6 +248,8 @@ QStringList WppComment::GetWPPText()
             for(int i = 0; i < shapePtrList.count(); ++i)
             {
                 ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                QStringList smartTextList = GetSmartArtText(tmpShape);
+                qsStrList.append(smartTextList);
                 ks_stdptr<TextFrame> textFramePtr;
                 tmpShape->get_TextFrame(&textFramePtr);
                 ks_stdptr<TextEffectFormat> textEffectFramePtr;
