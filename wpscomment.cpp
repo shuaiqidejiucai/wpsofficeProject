@@ -733,14 +733,12 @@ bool WpsComment::getOldFileDataForInlineShape(kfc::ks_stdptr<wpsapi::InlineShape
         QByteArray data = mdata->data(qsMimeData);
         QByteArray srcData;
         QString qsType2;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
+        ST_VarantFile stOleFile;
+
+        UtilityTool::GetAttachmentData(data, stOleFile, ETFileType);
+
+        if(!stOleFile.fileData.isEmpty())
         {
-            if(srcData.isEmpty())
-            {
-                return result;
-            }
-            ST_VarantFile stOleFile;
-            UtilityTool::GetOleFileData(srcData, stOleFile);
             EU_OperateType operaTye;
             ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);

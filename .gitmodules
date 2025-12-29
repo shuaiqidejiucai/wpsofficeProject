@@ -1,0 +1,12 @@
+[submodule "zlib1.3.1Lib"]
+	path = zlib1.3.1Lib
+	url = http://192.168.2.86:3000/family/zlib1.3.1Lib.git
+[submodule "qunzip"]
+	path = qunzip
+	url = http://192.168.2.86:3000/family/qunzip.git
+[submodule "libolecf"]
+	path = libolecf
+	url = http://192.168.2.86:3000/family/libolecf.git
+[submodule "ZTSpdlog"]
+	path = ZTSpdlog
+	url = http://192.168.2.86:3000/family/ZTSpdlog.git

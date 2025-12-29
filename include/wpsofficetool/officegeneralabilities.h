@@ -18,6 +18,7 @@ enum EU_FileType
     ImageType,
     OleFileType
 };
+
 const QString WPSMimeDataKey = "Kingsoft WPS";
 const QString WPPMimeDataKey = "Kingsoft WPP";
 //const QString ETMimeDataKey = "Kingsoft ET";

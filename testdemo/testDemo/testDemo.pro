@@ -15,8 +15,8 @@ INCLUDEPATH+=$$INCLUDEDIR/wpsofficetool \
              $$INCLUDEDIR
 
 SOURCES += \
-#    main.cpp \
-    etmain.cpp \
+    main.cpp \
+#    etmain.cpp \
     mainwindow.cpp \
     mytcpserver.cpp
 

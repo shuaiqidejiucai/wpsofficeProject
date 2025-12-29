@@ -35,7 +35,10 @@ bool WppComment::initWppApplication()
     }
     return false;
 }
-
+#include <libolecf.h>
+#include <libbfio_handle.h>
+#include <libolecf/libolecf_file.h>
+#include <libbfio_memory_range.h>
 bool WppComment::initWPPRpcClient()
 {
     HRESULT hr = createWppRpcInstance(&m_rpcClient);
@@ -68,6 +71,19 @@ bool WppComment::initWPPRpcClient()
     m_containWidget->hide();
     return true;
 }
+#include <QString>
+#include <QtEndian>
+bool isPptEncrypted(const QByteArray &currentUserStream) {
+    if (currentUserStream.size() < 16) return false;
+
+    const uchar* p = reinterpret_cast<const uchar*>(currentUserStream.constData());
+    quint16 recType = qFromLittleEndian<quint16>(p + 2); // 0x0FF6
+    quint32 len = qFromLittleEndian<quint32>(p + 4);
+    quint16 docVer = qFromLittleEndian<quint16>(p + 14);
+
+    // 加密特征：docFileVersion=0 且长度异常短
+    return (docVer == 0x0000 && len < 30);
+}
 
 bool WppComment::openWPPDoc(const QString &fileName)
 {
@@ -80,7 +96,16 @@ bool WppComment::openWPPDoc(const QString &fileName)
     wppapi::MsoTriState untitled = msoFalse;
     wppapi::MsoTriState withWindow = msoFalse;
     ks_stdptr<_Presentation> spPresentation;
+
+
+    bool ok = UtilityTool::findNameOleBinFromFile(fileName);
+
+    if(ok)
+    {
+        return false;
+    }
     HRESULT hr = m_spDocs->Open(filename, readOnly, untitled, withWindow, (Presentation**)&spPresentation);
+
 
     if (SUCCEEDED(hr))
     {
@@ -90,6 +115,7 @@ bool WppComment::openWPPDoc(const QString &fileName)
     }
     else
     {
+        qDebug()<< HRESULT_CODE(hr);
         qDebug() << "open fail";
     }
 
@@ -106,6 +132,116 @@ bool WppComment::closeWPPDoc()
     return false;
 }
 
+#include <ksoapi/ksoapi.h>
+QStringList GetSmartArtText(ks_stdptr<Shape> tmpShape)
+{
+    QStringList qsTextList;
+    MsoShapeType tmpShapeType;
+    tmpShape->get_Type(&tmpShapeType);
+
+    if(tmpShapeType == MsoShapeType::msoSmartArt)
+    {
+        ks_stdptr<SmartArt> smartArtPtr;
+        tmpShape->get_SmartArt(&smartArtPtr);
+        if(smartArtPtr)
+        {
+            ks_stdptr<ksoapi::SmartArtNodes> nodesPtr;
+            smartArtPtr->get_AllNodes(&nodesPtr);
+            if(nodesPtr)
+            {
+                int nodeCount = 0;
+                nodesPtr->get_Count(&nodeCount);
+                for(int nodeIndex = 1; nodeIndex <= nodeCount; ++nodeIndex)
+                {
+                    VARIANT nodeIndexVar;
+                    VariantInit(&nodeIndexVar);
+                    V_VT(&nodeIndexVar) = VT_I4;
+                    V_I4(&nodeIndexVar) = nodeIndex;
+                    ks_stdptr<ksoapi::SmartArtNode> nodePtr;
+                    nodesPtr->get_Item(nodeIndexVar, &nodePtr);
+                    if(nodePtr)
+                    {
+                        ks_stdptr<ksoapi::TextFrame2> frame2Ptr;
+                        nodePtr->get_TextFrame2(&frame2Ptr);
+                        if(frame2Ptr)
+                        {
+                            ks_stdptr<ksoapi::TextRange2> textRange2Ptr;
+                            frame2Ptr->get_TextRange(&textRange2Ptr);
+                            if(textRange2Ptr)
+                            {
+                               ks_bstr textPtr;
+                               textRange2Ptr->get_Text(&textPtr);
+                               QString qsText = GetBSTRText(textPtr);
+                               qsTextList.append(qsText);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //
+
+        }
+    }
+    return qsTextList;
+}
+
+
+QStringList GetCommentText(ks_stdptr<SlideRange> range)
+{
+    QStringList qsTextList;
+    if(range)
+    {
+        ks_stdptr<Comments> commentsPtr;
+        range->get_Comments(&commentsPtr);
+        if(commentsPtr)
+        {
+            long count = 0;
+            commentsPtr->get_Count(&count);
+            for(long i = 0; i <= count; ++i)
+            {
+                ks_stdptr<Comment> commentPtr;
+                commentsPtr->Item(i, &commentPtr);
+                if(commentPtr)
+                {
+                    ks_bstr textPtr;
+                    commentPtr->get_Text(&textPtr);
+                    QString qsText = GetBSTRText(textPtr);
+                    qsTextList.append(qsText);
+                }
+            }
+        }
+    }
+    return qsTextList;
+}
+
+QStringList GetSlideComment(ks_stdptr<_Slide> slidePtr)
+{
+    QStringList qsTextList;
+    if(slidePtr)
+    {
+        ks_stdptr<Comments> commentsPtr;
+        slidePtr->get_Comments(&commentsPtr);
+        if(commentsPtr)
+        {
+            long count = 0;
+            commentsPtr->get_Count(&count);
+            for(long i = 1; i <= count; ++i)
+            {
+                ks_stdptr<Comment> commentPtr;
+                commentsPtr->Item(i, &commentPtr);
+                if(commentPtr)
+                {
+                    ks_bstr textPtr;
+                    commentPtr->get_Text(&textPtr);
+                    QString qsText = GetBSTRText(textPtr);
+                    qsTextList.append(qsText);
+                }
+            }
+        }
+    }
+    return QStringList();
+}
 
 QStringList WppComment::GetWPPText()
 {
@@ -133,19 +269,29 @@ QStringList WppComment::GetWPPText()
 
         ks_stdptr<SlideRange> range;
         slidesPtr->Range(rangeIndex, &range);
+        ks_stdptr<_Slide> slide;
+        slidesPtr->Item(rangeIndex, (Slide**)&slide);
         if(!range)
         {
             continue;
         }
+        if(!slide)
+        {
+            continue;
+        }
+        QStringList slideCommentList = GetSlideComment(slide);
+        qsStrList.append(slideCommentList);
         ks_stdptr<Shapes> shapesPtr;
         range->get_Shapes(&shapesPtr);
+        //QStringList commentList = GetCommentText(range);
+
         if(!shapesPtr)
         {
             continue;
         }
         int shapeCount = 0;
         shapesPtr->get_Count(&shapeCount);
-        for(int q = 1; q <= shapeCount + 1; ++q)
+        for(int q = 1; q <= shapeCount; ++q)
         {
             VARIANT shapeIndex;
             VariantInit(&shapeIndex);
@@ -169,11 +315,29 @@ QStringList WppComment::GetWPPText()
             for(int i = 0; i < shapePtrList.count(); ++i)
             {
                 ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                //tmpShape->
+                QStringList smartTextList = GetSmartArtText(tmpShape);
+                //GetShapeComment();
+                qsStrList.append(smartTextList);
                 ks_stdptr<TextFrame> textFramePtr;
                 tmpShape->get_TextFrame(&textFramePtr);
+                ks_stdptr<TextFrame2> textFrame2Ptr;
+                tmpShape->get_TextFrame2(&textFrame2Ptr);
                 ks_stdptr<TextEffectFormat> textEffectFramePtr;
                 tmpShape->get_TextEffect(&textEffectFramePtr);
 
+                if(textFrame2Ptr)
+                {
+                    ks_stdptr<TextRange2> textRange2Ptr;
+                    textFrame2Ptr->get_TextRange(&textRange2Ptr);
+                    if(textRange2Ptr)
+                    {
+                        ks_bstr text;
+                        textRange2Ptr->get_Text(&text);
+                        QString qsText = GetBSTRText(text);
+                        qsStrList.append(qsText);
+                    }
+                }
                 if(textFramePtr)
                 {
                     ks_stdptr<TextRange> textRangePtr;
@@ -878,10 +1042,6 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
         ST_VarantFile stOleFile;
         QStringList qsMimeDataKeyList = mdata->formats();
         QString qsMimeData;
-        QByteArray tmpData = mdata->data("Kingsoft Shapes Tag");
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(tmpData);
-        QJsonObject jsonObj = jsonDoc.object();
-        QString qsType = jsonObj.value("objectsTag").toString();
 
         for(const QString& qsTmp : qsMimeDataKeyList)
         {
@@ -896,46 +1056,12 @@ bool WppComment::getOldFileDataForShape(kfc::ks_stdptr<wppapi::Shapes> shapesPtr
             return result;
         }
         QByteArray data = mdata->data(qsMimeData);
-        QByteArray srcData;
-        QString qsType2;
-        if(UtilityTool::findOleDataFromZipMemory(data, srcData,qsType2))
+        ST_VarantFile outFileInfo;
+        UtilityTool::GetAttachmentData(data, stOleFile, WPPFileType);
+
+        if(!stOleFile.fileData.isEmpty())
         {
-            if(srcData.isEmpty())
-            {
-                return result;
-            }
-
-            if(srcData.at(0) == 0x02)
-            {
-                stOleFile.fileData = srcData;
-            }
-            else
-            {
-                srcData.remove(0,1);
-                UtilityTool::GetOleFileData(srcData, stOleFile);
-                if(qsType.contains("PowerPoint") && stOleFile.qsFileName.isEmpty())
-                {
-                    stOleFile.qsFileName = "tmp.pptx";
-                }
-                if(qsType.contains("Word.Document.8"))
-                {
-                    stOleFile.qsFileName = "tmp.doc";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.8"))
-                {
-                    stOleFile.qsFileName = "tmp.et";
-                    stOleFile.fileData = srcData;
-                }
-                if(qsType.contains("Excel.Sheet.12"))
-                {
-                    stOleFile.qsFileName = "tmp.xlsx";
-                }
-            }
-
-
             EU_OperateType operaTye;
-            ST_VarantFile outFileInfo;
             isContinue = oldDataFunPtr(stOleFile, outFileInfo, operaTye);
             if(operaTye == DeleteType)
             {
