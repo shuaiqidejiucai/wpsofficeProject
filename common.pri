@@ -18,7 +18,9 @@ COMPILENAME=clang
 contains(QMAKE_CC, gcc){
 COMPILENAME=gcc
 }
-
+win32:msvc* {
+    COMPILENAME=mscv
+}
 #release:DEFINES+=QT_NO_DEBUG_OUTPUT
 OBJECTS_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/obj
 MOC_DIR = $$PWD/build/$$COMPILENAME/$$platform/$$TARGET/moc

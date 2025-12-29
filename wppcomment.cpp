@@ -186,6 +186,63 @@ QStringList GetSmartArtText(ks_stdptr<Shape> tmpShape)
     return qsTextList;
 }
 
+
+QStringList GetCommentText(ks_stdptr<SlideRange> range)
+{
+    QStringList qsTextList;
+    if(range)
+    {
+        ks_stdptr<Comments> commentsPtr;
+        range->get_Comments(&commentsPtr);
+        if(commentsPtr)
+        {
+            long count = 0;
+            commentsPtr->get_Count(&count);
+            for(long i = 0; i <= count; ++i)
+            {
+                ks_stdptr<Comment> commentPtr;
+                commentsPtr->Item(i, &commentPtr);
+                if(commentPtr)
+                {
+                    ks_bstr textPtr;
+                    commentPtr->get_Text(&textPtr);
+                    QString qsText = GetBSTRText(textPtr);
+                    qsTextList.append(qsText);
+                }
+            }
+        }
+    }
+    return qsTextList;
+}
+
+QStringList GetSlideComment(ks_stdptr<_Slide> slidePtr)
+{
+    QStringList qsTextList;
+    if(slidePtr)
+    {
+        ks_stdptr<Comments> commentsPtr;
+        slidePtr->get_Comments(&commentsPtr);
+        if(commentsPtr)
+        {
+            long count = 0;
+            commentsPtr->get_Count(&count);
+            for(long i = 1; i <= count; ++i)
+            {
+                ks_stdptr<Comment> commentPtr;
+                commentsPtr->Item(i, &commentPtr);
+                if(commentPtr)
+                {
+                    ks_bstr textPtr;
+                    commentPtr->get_Text(&textPtr);
+                    QString qsText = GetBSTRText(textPtr);
+                    qsTextList.append(qsText);
+                }
+            }
+        }
+    }
+    return QStringList();
+}
+
 QStringList WppComment::GetWPPText()
 {
     QStringList qsStrList;
@@ -212,12 +269,22 @@ QStringList WppComment::GetWPPText()
 
         ks_stdptr<SlideRange> range;
         slidesPtr->Range(rangeIndex, &range);
+        ks_stdptr<_Slide> slide;
+        slidesPtr->Item(rangeIndex, (Slide**)&slide);
         if(!range)
         {
             continue;
         }
+        if(!slide)
+        {
+            continue;
+        }
+        QStringList slideCommentList = GetSlideComment(slide);
+        qsStrList.append(slideCommentList);
         ks_stdptr<Shapes> shapesPtr;
         range->get_Shapes(&shapesPtr);
+        //QStringList commentList = GetCommentText(range);
+
         if(!shapesPtr)
         {
             continue;
@@ -248,13 +315,29 @@ QStringList WppComment::GetWPPText()
             for(int i = 0; i < shapePtrList.count(); ++i)
             {
                 ks_stdptr<Shape> tmpShape = shapePtrList.at(i);
+                //tmpShape->
                 QStringList smartTextList = GetSmartArtText(tmpShape);
+                //GetShapeComment();
                 qsStrList.append(smartTextList);
                 ks_stdptr<TextFrame> textFramePtr;
                 tmpShape->get_TextFrame(&textFramePtr);
+                ks_stdptr<TextFrame2> textFrame2Ptr;
+                tmpShape->get_TextFrame2(&textFrame2Ptr);
                 ks_stdptr<TextEffectFormat> textEffectFramePtr;
                 tmpShape->get_TextEffect(&textEffectFramePtr);
 
+                if(textFrame2Ptr)
+                {
+                    ks_stdptr<TextRange2> textRange2Ptr;
+                    textFrame2Ptr->get_TextRange(&textRange2Ptr);
+                    if(textRange2Ptr)
+                    {
+                        ks_bstr text;
+                        textRange2Ptr->get_Text(&text);
+                        QString qsText = GetBSTRText(text);
+                        qsStrList.append(qsText);
+                    }
+                }
                 if(textFramePtr)
                 {
                     ks_stdptr<TextRange> textRangePtr;
