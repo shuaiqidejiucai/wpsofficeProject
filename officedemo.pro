@@ -5,7 +5,10 @@ TARGET = wpsDemo
 TEMPLATE = app
 QT_QPA_PLATFORM=xcb
 DEFINES+= HAVE_LOCAL_LIBBFIO HAVE_LOCAL_LIBCDATA HAVE_LOCAL_LIBCERROR
-include(common.pri)
+
+shareRoot = $$PWD/share
+include($$shareRoot/common/common.pri)
+
 exists(/opt/kingsoft/wps-office/office6/libstdc++.so.6){
         system(ln -s /opt/kingsoft/wps-office/office6/libstdc++.so.6  libstdc++.so.6)
         LIBS += $$PWD/libstdc++.so.6
@@ -25,7 +28,7 @@ else{
         LIBS += -lrpcwpsapi -lrpcetapi -lrpcwppapi
 }
 
-
+INCLUDEDIR=$$PWD/include
 INCLUDEPATH = . \
                 $$INCLUDEDIR \
                 $$INCLUDEDIR/wpsofficetool \
@@ -58,16 +61,16 @@ INCLUDEPATH += $$PWD/qunzip/include
 LIBS += -L"$$LIBDIR/quazipSelf" -lquazipSelf
 
 
-INCLUDEPATH += $$PWD/spdlog/include
+INCLUDEPATH += $$PWD/ZTSpdlog/include
 LIBS += -L"$$LIBDIR/spdlog" -lspdlog
 
-INCLUDEPATH += $$PWD/libolecfself/include
-INCLUDEPATH += $$PWD/libolecfself/include/common
-INCLUDEPATH += $$PWD/libolecfself/include/libbfio
-INCLUDEPATH += $$PWD/libolecfself/include/libcdata
-INCLUDEPATH += $$PWD/libolecfself/include/libcerror
-INCLUDEPATH += $$PWD/libolecfself/include/libolecf
-INCLUDEPATH += $$PWD/libolecfself/src/include/libcpath
+INCLUDEPATH += $$PWD/libolecf/include
+INCLUDEPATH += $$PWD/libolecf/include/common
+INCLUDEPATH += $$PWD/libolecf/include/libbfio
+INCLUDEPATH += $$PWD/libolecf/include/libcdata
+INCLUDEPATH += $$PWD/libolecf/include/libcerror
+INCLUDEPATH += $$PWD/libolecf/include/libolecf
+INCLUDEPATH += $$PWD/libolecf/src/include/libcpath
 
 INCLUDEPATH += $$INCLUDEDIR/common
 INCLUDEPATH += $$INCLUDEDIR/libolecf
