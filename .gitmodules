@@ -10,3 +10,6 @@
 [submodule "ZTSpdlog"]
 	path = ZTSpdlog
 	url = http://192.168.2.86:3000/family/ZTSpdlog.git
+[submodule "share"]
+	path = share
+	url = http://192.168.2.86:3000/family/share.git
