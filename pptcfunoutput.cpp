@@ -155,18 +155,34 @@ int initExtractFloder(const char *inputfilepath, const char *rootpath, ST_OutFil
         QDir fileTextOutDir(qsFileTextOutDir);
         if(fileTextOutDir.exists())
         {
-            QString qslog = "path:" + qsFileTextOutDir +" existed ready delete";
-            SPDLOG_INFO(qslog.toUtf8().data());
-            if(!fileTextOutDir.removeRecursively())
+            QString qsTmp;
+            int nIndex = 0;
+            while (fileTextOutDir.exists())
             {
-                SPDLOG_ERROR("delete failed");
-                return 0;
+                qsTmp = qsFileTextOutDir + QString::number(nIndex);
+                fileTextOutDir = QDir(qsTmp);
+                ++nIndex;
             }
-            else
-            {
-                SPDLOG_INFO("delete successful");
-            }
+            qsFileTextOutDir = qsTmp;
+            qsFileTextOutFile = qsFileTextOutDir + "/content.txt";
         }
+
+
+
+        // if(fileTextOutDir.exists())
+        // {
+        //     QString qslog = "path:" + qsFileTextOutDir +" existed ready delete";
+        //     SPDLOG_INFO(qslog.toUtf8().data());
+        //     if(!fileTextOutDir.removeRecursively())
+        //     {
+        //         SPDLOG_ERROR("delete failed");
+        //         return 0;
+        //     }
+        //     else
+        //     {
+        //         SPDLOG_INFO("delete successful");
+        //     }
+        // }
 
         if(!fileTextOutDir.mkpath(qsFileTextOutDir))
         {
@@ -187,19 +203,34 @@ int initExtractFloder(const char *inputfilepath, const char *rootpath, ST_OutFil
         }
         QString qsFileImageOutDir = qsRootpath + "/outImage/" + inputPathInfo.fileName();
         QDir fileImageOutDir(qsFileImageOutDir);
+
+
         if(fileImageOutDir.exists())
         {
-            SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" existed ready delete").toUtf8().data());
-            if(!fileImageOutDir.removeRecursively())
+            int nIndex = 0;
+            QString qsTmp;
+            while (fileImageOutDir.exists())
             {
-                SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +"  delete failed").toUtf8().data());
-                return 0;
+                qsTmp = qsFileImageOutDir + QString::number(nIndex);
+                fileImageOutDir = QDir(qsTmp);
+                ++nIndex;
             }
-            else
-            {
-                SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" delete successful").toUtf8().data());
-            }
+            qsFileImageOutDir = qsTmp;
         }
+
+        // if(fileImageOutDir.exists())
+        // {
+        //     SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" existed ready delete").toUtf8().data());
+        //     if(!fileImageOutDir.removeRecursively())
+        //     {
+        //         SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +"  delete failed").toUtf8().data());
+        //         return 0;
+        //     }
+        //     else
+        //     {
+        //         SPDLOG_INFO(QString("path:" + qsFileImageOutDir +" delete successful").toUtf8().data());
+        //     }
+        // }
         if(!fileImageOutDir.mkpath(qsFileImageOutDir))
         {
             SPDLOG_ERROR(QString("path:" + qsFileImageOutDir +" create failed").toUtf8().data());
@@ -221,19 +252,34 @@ int initExtractFloder(const char *inputfilepath, const char *rootpath, ST_OutFil
         }
         QString qsAttachmentDir = qsRootpath + "/outAttachment/" + inputPathInfo.fileName();
         QDir fileOutDir(qsAttachmentDir);
+
         if(fileOutDir.exists())
         {
-            SPDLOG_INFO(QString("path:" + qsAttachmentDir +" existed ready delete").toUtf8().data());
-            if(!fileOutDir.removeRecursively())
+            int nIndex = 0;
+            QString qsTmp;
+            while (fileOutDir.exists())
             {
-                SPDLOG_ERROR(QString("path:" + qsAttachmentDir +"  delete failed").toUtf8().data());
-                return 0;
+                qsTmp = qsAttachmentDir + QString::number(nIndex);
+                fileOutDir = QDir(qsTmp);
+                ++nIndex;
             }
-            else
-            {
-                SPDLOG_INFO(QString("path:" + qsAttachmentDir +" delete successful").toUtf8().data());
-            }
+            qsAttachmentDir = qsTmp;
         }
+
+        // if(fileOutDir.exists())
+        // {
+        //     SPDLOG_INFO(QString("path:" + qsAttachmentDir +" existed ready delete").toUtf8().data());
+        //     if(!fileOutDir.removeRecursively())
+        //     {
+        //         SPDLOG_ERROR(QString("path:" + qsAttachmentDir +"  delete failed").toUtf8().data());
+        //         return 0;
+        //     }
+        //     else
+        //     {
+        //         SPDLOG_INFO(QString("path:" + qsAttachmentDir +" delete successful").toUtf8().data());
+        //     }
+        // }
+
         if(!fileOutDir.mkpath(qsAttachmentDir))
         {
             SPDLOG_ERROR(QString("path:" + qsAttachmentDir +" create failed").toUtf8().data());
