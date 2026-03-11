@@ -273,7 +273,7 @@ bool checkOleHeader(const QByteArray& srcData)
     return false;
 }
 
-QString GetAttachmentDocumentType(QByteArray xmlData, EU_DocumentType docType)
+QString GetAttachmentDocumentType(QByteArray xmlData, EU_DocumentFileType docType)
 {
     QFile file("/home/ft2000/mjcenv/dps-ppt/bugwenjian/testT.xml");
     if(file.open(QIODevice::WriteOnly))
@@ -481,7 +481,7 @@ bool UtilityTool::findOleDataFromZipMemory(const QByteArray &zipBytes, QByteArra
     return findOleData;
 }
 
-void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentType docType)
+void UtilityTool::GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentFileType docType)
 {
     QBuffer buffer;
     buffer.setData(zipBytes);

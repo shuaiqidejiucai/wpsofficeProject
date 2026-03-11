@@ -281,6 +281,15 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
         return 0;
     }
     WppComment* wpp = (WppComment*)wppObj;
+
+    if(elementType & ImageElementType)
+    {
+
+    }
+    if(elementType & AttachmentElementType)
+    {
+
+    }
     if(wpp->openWPPDoc(qsInputfilepath))
     {
         SPDLOG_INFO(QString("file:" + qsInputfilepath + "open successful").toUtf8().data());

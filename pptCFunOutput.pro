@@ -1,7 +1,8 @@
 QT += core gui network xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
+shareRoot = $$PWD/share
+include($$shareRoot/common/common.pri)
 QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
 
 # 获取GCC版本信息
@@ -24,7 +25,6 @@ TEMPLATE = lib
 CONFIG += dll
 QT_QPA_PLATFORM=xcb
 
-include(common.pri)
 DEFINES+= HAVE_LOCAL_LIBBFIO HAVE_LOCAL_LIBCDATA HAVE_LOCAL_LIBCERROR
 
 exists(/opt/kingsoft/wps-office/office6/libstdc++.so.6){
@@ -62,7 +62,8 @@ SOURCES += \
     pptcfunoutput.cpp \
     utilitytool.cpp \
     wppcomment.cpp \
-    wpscomment.cpp
+    wpscomment.cpp \
+    zttoolst.cpp
 
 HEADERS += \
     include/wpsofficetool/etcomment.h \
@@ -71,21 +72,22 @@ HEADERS += \
     include/wpsofficetool/utilitytool.h \
     include/wpsofficetool/wppcomment.h \
     include/wpsofficetool/wpscomment.h \
-    log_global.h
+    log_global.h \
+    zttoolst.h
 
 INCLUDEPATH += $$PWD/qunzip/include
 
 INCLUDEPATH += $$PWD/include/wpsofficetool
 
-INCLUDEPATH += $$PWD/libolecfself/include
-INCLUDEPATH += $$PWD/libolecfself/include/common
-INCLUDEPATH += $$PWD/libolecfself/include/libbfio
-INCLUDEPATH += $$PWD/libolecfself/include/libcdata
-INCLUDEPATH += $$PWD/libolecfself/include/libcerror
-INCLUDEPATH += $$PWD/libolecfself/include/libolecf
-INCLUDEPATH += $$PWD/libolecfself/src/include/libcpath
-INCLUDEPATH += $$PWD/spdlog/include
-
+INCLUDEPATH += $$PWD/libolecf/include
+INCLUDEPATH += $$PWD/libolecf/include/common
+INCLUDEPATH += $$PWD/libolecf/include/libbfio
+INCLUDEPATH += $$PWD/libolecf/include/libcdata
+INCLUDEPATH += $$PWD/libolecf/include/libcerror
+INCLUDEPATH += $$PWD/libolecf/include/libolecf
+INCLUDEPATH += $$PWD/libolecf/src/include/libcpath
+INCLUDEPATH += $$PWD/ZTSpdlog/include
+INCLUDEPATH += $$shareRoot/header
 #INCLUDEPATH += $$INCLUDEDIR/common
 #INCLUDEPATH += $$INCLUDEDIR/libolecf
 #INCLUDEPATH += $$SRCINCLUDEDIR/libfwps

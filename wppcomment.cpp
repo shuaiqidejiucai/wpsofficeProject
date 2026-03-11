@@ -13,6 +13,11 @@
 #include<QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include "zttoolst.h"
+#include <libolecf.h>
+#include <libbfio_handle.h>
+#include <libolecf/libolecf_file.h>
+#include <libbfio_memory_range.h>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -35,10 +40,7 @@ bool WppComment::initWppApplication()
     }
     return false;
 }
-#include <libolecf.h>
-#include <libbfio_handle.h>
-#include <libolecf/libolecf_file.h>
-#include <libbfio_memory_range.h>
+
 bool WppComment::initWPPRpcClient()
 {
     HRESULT hr = createWppRpcInstance(&m_rpcClient);
@@ -810,6 +812,86 @@ void WppComment::extractPictureNomemery(const QString &qsImageDir)
         }
     }
     return;
+}
+
+bool WppComment::isPPTFormate(const QString &qsFilePath, QByteArray &documentData, QByteArray &pictureData)
+{
+    QString nativePath = QDir::toNativeSeparators(qsFilePath);
+
+    QSharedPointer<libolecf_file_t> oleFilePtr;
+    QSharedPointer<libolecf_item_t> rootItemPtr;
+    int errorCode = ZT_Libolecf::ZT_libolecf_file_initialize(oleFilePtr);
+    if(errorCode == 1 && oleFilePtr)
+    {
+        errorCode = ZT_Libolecf::ZT_libolecf_file_open(oleFilePtr, nativePath.toUtf8().constData(), LIBOLECF_OPEN_READ);
+        if(errorCode == 1)
+        {
+            ZT_Libolecf::ZT_libolecf_file_get_root_item(oleFilePtr, rootItemPtr);
+            if(rootItemPtr)
+            {
+                bool haveOutPut = false;
+                QSharedPointer<libolecf_item_t> documentItemPtr;
+                QSharedPointer<libolecf_item_t> picturesItemPtr;
+                EU_DocumentType docType = ZTTools::getOleFileFormat(rootItemPtr, haveOutPut, documentItemPtr);
+                if(docType == WPPFileType)
+                {
+                    ZTTools::findOleTreeItem(rootItemPtr, "Pictures", picturesItemPtr, false, true);
+                    pictureData = ZTTools::getOleItemData(picturesItemPtr);
+                    documentData = ZTTools::getOleItemData(documentItemPtr);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void WppComment::extractImage(const QByteArray &documentData, const QByteArray &pictureData)
+{
+
+}
+
+void WppComment::extractAttachment(const QByteArray &documentData)
+{
+    auto physicalStruct = [documentData](quint32 pos, ST_Variable& stVar)->bool
+    {
+        if (pos + 8 < (quint32)documentData.size())
+            {
+                quint16 head = GetFlagData<quint16>(documentData.constData(), pos);
+                ST_TP(stVar) = GetFlagData<quint16>(documentData.constData(), pos);
+                ST_SZ(stVar) = GetFlagData<quint32>(documentData.constData(), pos);
+
+                ST_RV(stVar) = head & 0xF;
+                ST_RI(stVar) = head >> 4;
+                if (pos + ST_SZ(stVar) <= (quint32)documentData.size())
+                {
+                    ST_SP(stVar) = pos;
+                    ST_EP(stVar) = pos + ST_SZ(stVar);
+                    return true;
+                }
+            }
+            return false;
+    } ;
+
+    ST_Variable stVar;
+    quint32 pos = 0;
+    bool isValid;
+
+    quint32 docStratpos = 0;
+    do
+    {
+
+        isValid = physicalStruct(pos, stVar);
+        if (isValid)
+        {
+//            if(ST_FT(stVar) )
+//            {
+
+//            }
+        }
+        pos = ST_EP(stVar);
+    } while (isValid);
+
 }
 
 void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)

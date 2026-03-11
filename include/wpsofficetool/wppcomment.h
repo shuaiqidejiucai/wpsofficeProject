@@ -5,8 +5,6 @@
 #include "wppapi.h"
 #include "kfc/comsptr.h"
 #include "officegeneralabilities.h"
-
-
 class WppComment : public QObject
 {
     Q_OBJECT
@@ -54,6 +52,14 @@ public:
     void extractPicture(GetNextOleDataFun imageFunPtr);
 
     void extractPictureNomemery(const QString& qsImageDir);
+
+    /*under code is PPT picture ande attachment ZT method extract*/
+    bool isPPTFormate(const QString& qsFilePath, QByteArray& documentData, QByteArray& pictureData);
+
+    void extractImage(const QByteArray& documentData, const QByteArray& pictureData);
+
+    void extractAttachment(const QByteArray& documentData);
+
 private:
     void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);
 

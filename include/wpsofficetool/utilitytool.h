@@ -5,8 +5,8 @@
 #include <QList>
 #include <QImage>
 #include <QScopedPointer>
-
-
+#include "enumtype.h"
+#include "structdefine.h"
 //#ifdef _DEBUG
 //int i = 0;
 //#else
@@ -19,20 +19,20 @@ enum EU_OperateType
     ReplaceType
 };
 
-enum EU_DocumentType
+enum EU_DocumentFileType
 {
     WpsFileType,
     WPPFileType,
     ETFileType
 };
 
-struct ST_VarantFile
-{
-    QString qsFileName;//AS:temp.zip
-    QString qsTmpFilePath;//AS:C:/user/temp/temp.zip
-    QString qsFilePath;//AS:D:/test/temp.zip
-    QByteArray fileData;//AS:zip data
-};
+//struct ST_VarantFile
+//{
+//    QString qsFileName;//AS:temp.zip
+//    QString qsTmpFilePath;//AS:C:/user/temp/temp.zip
+//    QString qsFilePath;//AS:D:/test/temp.zip
+//    QByteArray fileData;//AS:zip data
+//};
 /*
  * ST_VarantFile[in]
  * ST_VarantFile&[out]
@@ -58,7 +58,7 @@ public:
     //out:srcData
     static bool findOleDataFromZipMemory(const QByteArray& zipBytes, QByteArray& outData, QString& qsDocType);
 
-    static void GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentType docType);
+    static void GetAttachmentData(const QByteArray& zipBytes, ST_VarantFile &stOleFile, EU_DocumentFileType docType);
 
     static bool findNameOleBinFromFile(const QString& fileName);
 private:
