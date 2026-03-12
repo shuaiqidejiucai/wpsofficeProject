@@ -18,6 +18,7 @@
 #include <libbfio_handle.h>
 #include <libolecf/libolecf_file.h>
 #include <libbfio_memory_range.h>
+#include <zlib.h>
 //#include <quazip.h>
 
 using namespace wppapi;
@@ -833,7 +834,7 @@ bool WppComment::isPPTFormate(const QString &qsFilePath, QByteArray &documentDat
                 QSharedPointer<libolecf_item_t> documentItemPtr;
                 QSharedPointer<libolecf_item_t> picturesItemPtr;
                 EU_DocumentType docType = ZTTools::getOleFileFormat(rootItemPtr, haveOutPut, documentItemPtr);
-                if(docType == WPPFileType)
+                if(docType == EU_PPTType)
                 {
                     ZTTools::findOleTreeItem(rootItemPtr, "Pictures", picturesItemPtr, false, true);
                     pictureData = ZTTools::getOleItemData(picturesItemPtr);
@@ -851,47 +852,311 @@ void WppComment::extractImage(const QByteArray &documentData, const QByteArray &
 
 }
 
-void WppComment::extractAttachment(const QByteArray &documentData)
+bool oleAttachmentSecondParser(const QString& olePath, ST_VarantFile& varFile)
 {
-    auto physicalStruct = [documentData](quint32 pos, ST_Variable& stVar)->bool
+    QString nativePath = QDir::toNativeSeparators(olePath);
+    QSharedPointer<libolecf_error_t> error;
+    QSharedPointer<libolecf_file_t> oleFilePtr;
+    int errorCode = ZT_Libolecf::ZT_libolecf_file_initialize(oleFilePtr, &error);
+    if (errorCode == 1 && oleFilePtr)
     {
-        if (pos + 8 < (quint32)documentData.size())
+        errorCode = ZT_Libolecf::ZT_libolecf_file_open(oleFilePtr, nativePath.toUtf8().constData(), LIBOLECF_OPEN_READ, &error);
+        if (errorCode == 1)
+        {
+            QSharedPointer<libolecf_item_t> rootIemPtr;
+            ZT_Libolecf::ZT_libolecf_file_get_root_item(oleFilePtr, rootIemPtr, nullptr);
+            bool isOutPut = false;
+            QSharedPointer<libolecf_item_t> resultIemPtr;
+            EU_DocumentType docType = ZTTools::getOleFileFormat(rootIemPtr, isOutPut, resultIemPtr);
+            if (docType == EU_DocumentType::EU_BinType)
             {
-                quint16 head = GetFlagData<quint16>(documentData.constData(), pos);
-                ST_TP(stVar) = GetFlagData<quint16>(documentData.constData(), pos);
-                ST_SZ(stVar) = GetFlagData<quint32>(documentData.constData(), pos);
-
-                ST_RV(stVar) = head & 0xF;
-                ST_RI(stVar) = head >> 4;
-                if (pos + ST_SZ(stVar) <= (quint32)documentData.size())
+                if (isOutPut && resultIemPtr)
                 {
-                    ST_SP(stVar) = pos;
-                    ST_EP(stVar) = pos + ST_SZ(stVar);
-                    return true;
+                    QByteArray data = ZTTools::getOleItemData(resultIemPtr);
+                    ZTTools::parseOle10Native(data, varFile);
                 }
             }
-            return false;
-    } ;
+            else if(docType == EU_DocumentType::EU_DOCType)
+            {
+                varFile.qsSuffix = ".doc";
+                varFile.fileData = ZTTools::getOleItemData(rootIemPtr);
+            }
+            else if (docType == EU_DocumentType::EU_PPTType)
+            {
+                varFile.qsSuffix = ".ppt";
+                varFile.fileData = ZTTools::getOleItemData(rootIemPtr);
+            }
+            else if (docType == EU_DocumentType::EU_XLSType)
+            {
+                varFile.qsSuffix = ".xls";
+                varFile.fileData = ZTTools::getOleItemData(rootIemPtr);
+            }
+            else if (docType == EU_DocumentType::EU_DOCXType)
+            {
+                varFile.qsSuffix = ".docx";
+                if (isOutPut && resultIemPtr)
+                {
+                    varFile.fileData = ZTTools::getOleItemData(resultIemPtr);
+                }
+            }
+            else if (docType == EU_DocumentType::EU_PPTXType)
+            {
+                varFile.qsSuffix = ".pptx";
+                if (isOutPut && resultIemPtr)
+                {
+                    varFile.fileData = ZTTools::getOleItemData(resultIemPtr);
+                }
+            }
+            else if (docType == EU_DocumentType::EU_XLSXType)
+            {
+                varFile.qsSuffix = ".xlsx";
+                if (isOutPut && resultIemPtr)
+                {
+                    varFile.fileData = ZTTools::getOleItemData(resultIemPtr);
+                }
+            }
+            else
+            {
+                varFile.fileData = ZTTools::getOleItemData(rootIemPtr);
+            }
+            return true;
+        }
+    }
+    return false;
+}
 
+void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVar, quint32 idRef, const QString& qsAttachmentPath, bool isCompressData = true)
+{
+    quint32 pos = ST_SP(stVar);
+    quint32 PersistBits = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + pos));
+    quint16 cPersist = PersistBits >> 20;
+    quint32 persistId = PersistBits & 0xFFFFF;
+    pos += 4;
+    for (quint16 i = 1; i <= cPersist; ++i)
+    {
+        if (i == idRef)
+        {
+            ST_Variable tmpVar;
+            quint32 rgPersistOffset = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + pos));
+            if(physicalStruct(rgPersistOffset, documentData, tmpVar))
+            {
+                quint32 dataPos = ST_SP(tmpVar);
+                quint32 ftSize = ST_SZ(tmpVar);
+                if(isCompressData)
+                {
+                    dataPos += 4;
+                    ftSize -= 4;
+                }
+                // ========== 使用 inflate 流式解压 ==========
+
+                //数据开始
+                const uchar* oleDataStart = reinterpret_cast<const uchar*>(documentData.data() + pos);
+                QFile file(qsAttachmentPath + "/tmp");
+                if(file.open(QIODevice::WriteOnly | QIODevice::Append))
+                {
+                    z_stream strm;
+                    memset(&strm, 0, sizeof(strm));
+                    strm.zalloc = Z_NULL;
+                    strm.zfree = Z_NULL;
+                    strm.opaque = Z_NULL;
+                    inflateInit(&strm);
+                    quint32 bufferPos = pos;
+                    quint32 bufferSize = 65535;
+                    strm.avail_in = ftSize;
+                    strm.next_in = const_cast<Bytef*>(oleDataStart);
+
+                    do
+                    {
+                        QByteArray outPutData(bufferSize, 0);
+                        strm.avail_out = bufferSize;
+                        strm.next_out = reinterpret_cast<Bytef*>(outPutData.data());
+                        if (strm.total_in + bufferSize >= ftSize)
+                        {
+                            int ret = inflate(&strm, Z_FINISH);
+                        }
+                        else
+                        {
+                            inflate(&strm, Z_NO_FLUSH);
+                        }
+
+                        if (strm.avail_out > 0)
+                        {
+                            outPutData.resize(bufferSize - strm.avail_out);
+                        }
+                        file.write(outPutData);
+
+                    } while (strm.total_in < ftSize);
+                    inflateEnd(&strm);
+                    file.close();
+                    ST_VarantFile varFile;
+                    bool ok = oleAttachmentSecondParser(file.fileName(), varFile);
+
+                    if(ok)
+                    {
+                        if(varFile.qsBaseName.isEmpty())
+                        {
+                            varFile.qsBaseName = QUuid::createUuid().toString();
+                        }
+                        QFile newFile(qsAttachmentPath + "/" + varFile.qsBaseName + varFile.qsSuffix);
+                        if(newFile.open(QIODevice::WriteOnly))
+                        {
+                            newFile.write(varFile.fileData);
+                            newFile.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+quint32 parserExOleEmbedContainer(const QByteArray &documentData, ST_Variable stVar)
+{
+    ST_Variable tmpVar = stVar;
+    //ExOleEmbedAtom
+    if (ST_TP(stVar) != RT_ExternalOleEmbedAtom)
+    {
+        return 0;
+    }
+    quint32 startPos = ST_SP(stVar);
+
+    quint32 exColorFollow = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 4;
+    //是否需要锁定ole服务器
+    quint8 fCantLockServer = qFromLittleEndian<quint8>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 1;
+    //是否可以省略向 OLE 服务器发送对象尺寸信息
+    quint8 fNoSizeToServer = qFromLittleEndian<quint8>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 1;
+    //指定 OLE 对象是否表示由 Word.Document ProgID 创建的表格（废弃）
+    quint8 fIsTable = qFromLittleEndian<quint8>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 1;
+    quint8 OleEmbedAtomUnused = qFromLittleEndian<quint8>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 1;
+    // ExOleObjAtom
+    bool isValid = physicalStruct(startPos, documentData, stVar);
+    if (!isValid || ST_TP(stVar) != RT_ExternalOleObjectAtom)
+    {
+        return 0;
+    }
+    //指定 OLE 对象用哪种"视图方面"来显示
+    quint32 drawAspect = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 4;
+    //嵌入类型：Embedded、Linked、Control、Embed
+    quint32 type = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 4;
+    quint32 exObjId = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 4;
+    quint32 subType = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    startPos += 4;
+    quint32 persistIdRef = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+    return persistIdRef;
+    //parserPersistDirectoryAtom(documentData, stVar2, persistIdRef);
+//    startPos += 4;
+//    quint32 unused = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
+//    startPos += 4;
+    //其余的因为是可选所以不解析
+
+}
+
+void WppComment::extractAttachment(const QByteArray &documentData, const QString& qsAttachmentPath)
+{
     ST_Variable stVar;
     quint32 pos = 0;
     bool isValid;
 
-    quint32 docStratpos = 0;
+    bool haveOleFile = false;
+//    ST_Variable documnetVar;
+    ST_Variable externalOleObjStgVar;
+    ST_Variable persistDirectoryVar;
     do
     {
-
-        isValid = physicalStruct(pos, stVar);
+        isValid = physicalStruct(pos, documentData, stVar);
         if (isValid)
         {
-//            if(ST_FT(stVar) )
-//            {
-
-//            }
+            if(ST_TP(stVar) == RT_PersistDirectoryAtom)
+            {
+                persistDirectoryVar = stVar;
+            }
+            else if (ST_TP(stVar) == RT_ExternalOleObjectStg)
+            {
+                externalOleObjStgVar = stVar;
+                haveOleFile = true;
+            }
         }
         pos = ST_EP(stVar);
     } while (isValid);
 
+    if(haveOleFile)
+    {
+        bool iscompressData = false;
+        if(ST_RI(externalOleObjStgVar) == 1)
+        {
+            iscompressData = true;
+        }
+        else
+        {
+            iscompressData = false;
+        }
+        QList<HeaderType> subContainerList;
+        subContainerList.append(RT_ExternalAviMovie);
+        subContainerList.append(RT_ExternalCdAudio);
+        subContainerList.append(RT_ExternalOleControl);
+        subContainerList.append(RT_ExternalHyperlink);
+        subContainerList.append(RT_ExternalMciMovie);
+        subContainerList.append(RT_ExternalMidiAudio);
+        subContainerList.append(RT_ExternalOleEmbed);
+        subContainerList.append(RT_ExternalOleLink);
+        subContainerList.append(RT_ExternalWavAudioEmbedded);
+        subContainerList.append(RT_ExternalWavAudioLink);
+        quint32 externOleObjAtomPos = ST_SP(externalOleObjStgVar);
+        physicalStruct(externOleObjAtomPos, documentData, stVar);
+        quint32 externOleObjsubContainerPos = ST_EP(stVar);
+
+        do
+        {
+            isValid = physicalStruct(externOleObjsubContainerPos, documentData, stVar);
+            if (isValid && subContainerList.contains((HeaderType)ST_TP(stVar) ))
+            {
+                switch (ST_TP(stVar))
+                {
+                case RT_ExternalAviMovie:
+                    break;
+                case RT_ExternalCdAudio:
+                    break;
+                case RT_ExternalOleControl:
+                    break;
+                case RT_ExternalHyperlink:
+                    break;
+                case RT_ExternalMciMovie:
+                    break;
+                case RT_ExternalMidiAudio:
+                    break;
+                case RT_ExternalOleEmbed:{
+                    quint32 idRef = parserExOleEmbedContainer(documentData, stVar);
+                    if(idRef != 0)
+                    {
+                        parserPersistDirectoryAtom(documentData, persistDirectoryVar, idRef, qsAttachmentPath);
+                    }
+                }
+                    break;
+                case RT_ExternalOleLink:
+                    break;
+                case RT_ExternalWavAudioEmbedded:
+                    break;
+                case RT_ExternalWavAudioLink:
+                    break;
+                default:
+                    break;
+                }
+                externOleObjsubContainerPos += ST_SZ(stVar);
+            }
+            else
+            {
+                break;
+            }
+        } while (true);
+    }
 }
 
 void WppComment::extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr)

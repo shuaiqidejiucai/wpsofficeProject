@@ -1,6 +1,8 @@
 QT += core gui network xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+TARGET = pptcfunoutout
+TEMPLATE = lib
 shareRoot = $$PWD/share
 include($$shareRoot/common/common.pri)
 QMAKE_CXXFLAGS += -std=c++0x -Wno-attributes
@@ -19,8 +21,7 @@ lessThan(GCC_MAJOR, 13):QMAKE_CXXFLAGS += -mno-outline-atomics
 # }
 
 
-TARGET = pptcfunoutout
-TEMPLATE = lib
+
 
 CONFIG += dll
 QT_QPA_PLATFORM=xcb

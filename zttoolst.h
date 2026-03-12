@@ -81,7 +81,7 @@ inline bool physicalStruct(quint32 pos, const QByteArray& srcData, ST_Variable& 
 
         ST_RV(stVar) = head & 0xF;
         ST_RI(stVar) = head >> 4;
-        if (pos + ST_SZ(stVar) < srcData.size())
+        if (pos + ST_SZ(stVar) <= srcData.size())
         {
             ST_SP(stVar) = pos;
             ST_EP(stVar) = pos + ST_SZ(stVar);

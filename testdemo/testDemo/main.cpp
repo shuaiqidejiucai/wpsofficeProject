@@ -10,6 +10,7 @@
 #include <QIODevice>
 #include <QString>
 #include "pptcfunoutput.h"
+
 #include <QLibrary>
 #include "mytcpserver.h"
 #include <QFileInfo>
@@ -17,23 +18,23 @@
 #include <QElapsedTimer>
 QString tmpAllPath;
 int gloabalIndex = 0;
-static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
-{
-    operateType = NoOperateType;
-    QByteArray ba = varInFile.fileData;
-    QFile file(tmpAllPath + QString::number(gloabalIndex) + ".png");
-    if(file.open(QIODevice::WriteOnly))
-    {
-        file.write(ba);
-        file.close();
-        gloabalIndex++;
-    }
-    //    QImage image = QImage::fromData(ba);
-    //    QLabel *label = new QLabel;
-    //    label->setPixmap(QPixmap::fromImage(image));
-    //    label->show();
-    return true;
-}
+//static bool TestPicture(ST_VarantFile varInFile, ST_VarantFile& varOutFile, EU_OperateType& operateType)
+//{
+//    operateType = NoOperateType;
+//    QByteArray ba = varInFile.fileData;
+//    QFile file(tmpAllPath + QString::number(gloabalIndex) + ".png");
+//    if(file.open(QIODevice::WriteOnly))
+//    {
+//        file.write(ba);
+//        file.close();
+//        gloabalIndex++;
+//    }
+//    //    QImage image = QImage::fromData(ba);
+//    //    QLabel *label = new QLabel;
+//    //    label->setPixmap(QPixmap::fromImage(image));
+//    //    label->show();
+//    return true;
+//}
 
 // 检查并杀死名为 "wpp" 的进程
 void killWppProcess()
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
                 {
                     qDebug()<<"outIndex====================:"<<QString::number(i);
                     ST_OutFilePath pSTOutFilePath = {0};
-                    pptCFunOutput(u8"/home/user/mjc/dps-ppt/ceshiole.ppt", "/home/user/mjc/dps-ppt",&pSTOutFilePath, wppObj, AllElementType);
+                    pptCFunOutput(u8"/home/ft2000/mjcenv/dps-ppt/new.ppt", "/home/ft2000/mjcenv/dps-ppt",&pSTOutFilePath, wppObj, AllElementType);
                 }
                 qint64 userd = time.elapsed();
                 qDebug()<<"run time:<<<<" << userd<<" ms";

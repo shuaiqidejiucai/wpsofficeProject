@@ -58,7 +58,7 @@ public:
 
     void extractImage(const QByteArray& documentData, const QByteArray& pictureData);
 
-    void extractAttachment(const QByteArray& documentData);
+    void extractAttachment(const QByteArray& documentData, const QString& qsAttachmentPath);
 
 private:
     void extractFile(EU_FileType fileType, GetNextOleDataFun fileFunPtr);

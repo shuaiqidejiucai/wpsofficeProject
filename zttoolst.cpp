@@ -258,19 +258,19 @@ bool ZTTools::parseOle10Native(const QByteArray& ole10NativeData, ST_VarantFile&
 EU_DocumentType ZTTools::getOleFileFormat(const QSharedPointer<libolecf_item_t>& intputItem, bool& haveOutput, QSharedPointer<libolecf_item_t>& outputItem)
 {
     bool isDoc = true;
-    QSharedPointer<libolecf_item_t> outPutItem;
-    isDoc = isDoc && findOleTreeItem(intputItem, "WordDocument", outPutItem);
+    //QSharedPointer<libolecf_item_t> outPutItem;
+    isDoc = isDoc && findOleTreeItem(intputItem, "WordDocument", outputItem);
 
     bool isXls = true;
-    isXls = isXls && findOleTreeItem(intputItem, "Workbook", outPutItem);
+    isXls = isXls && findOleTreeItem(intputItem, "Workbook", outputItem);
 
     bool isPpt = true;
-    isPpt = isPpt && findOleTreeItem(intputItem, "PowerPoint Document", outPutItem);
-    isPpt = isPpt && findOleTreeItem(intputItem, "Current User", outPutItem);
+    isPpt = isPpt && findOleTreeItem(intputItem, "PowerPoint Document", outputItem, false, true);
+    isPpt = isPpt && findOleTreeItem(intputItem, "Current User", outputItem);
     EU_DocumentType documentType = EU_DocumentType::EU_NoType;
     if (isDoc)
     {
-        if (findOleTreeItem(intputItem, "WpsCustomData", outPutItem))
+        if (findOleTreeItem(intputItem, "WpsCustomData", outputItem))
         {
             documentType = EU_WPSType;
         }
@@ -392,8 +392,8 @@ bool ZTTools::findOleTreeItem(const QSharedPointer<libolecf_item_t>& intputItem,
                 if (isOutPut)
                 {
                     subItem = subTmpItem;
-                    return true;
                 }
+                return true;
             }
         }
     }
@@ -406,8 +406,9 @@ bool ZTTools::findOleTreeItem(const QSharedPointer<libolecf_item_t>& intputItem,
             if (isOutPut)
             {
                 subItem = subTmpItem;
-                return true;
+
             }
+            return true;
         }
     }
     return false;

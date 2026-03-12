@@ -17,6 +17,7 @@
 #include <log_global.h>
 #include <QtEndian>
 #include "etcomment.h"
+#include "zttoolst.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -282,12 +283,20 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
     }
     WppComment* wpp = (WppComment*)wppObj;
 
-    if(elementType & ImageElementType)
-    {
+//    if(elementType & ImageElementType)
+//    {
 
-    }
+//    }
     if(elementType & AttachmentElementType)
     {
+        QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
+        QByteArray pptAttachmentData;
+        QByteArray pptImageData;
+        bool isPPT = wpp->isPPTFormate(qsInputfilepath, pptAttachmentData, pptImageData);
+        if(isPPT)
+        {
+            wpp->extractAttachment(pptAttachmentData, qsAttachmentDir);
+        }
 
     }
     if(wpp->openWPPDoc(qsInputfilepath))
