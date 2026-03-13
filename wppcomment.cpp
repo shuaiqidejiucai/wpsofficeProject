@@ -921,11 +921,12 @@ bool oleAttachmentSecondParser(const QString& olePath, ST_VarantFile& varFile)
             }
             return true;
         }
+
     }
     return false;
 }
 
-void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVar, quint32 idRef, const QString& qsAttachmentPath, bool isCompressData = true)
+void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVar, quint32 idRef, const QString& qsAttachmentPath)
 {
     quint32 pos = ST_SP(stVar);
     quint32 PersistBits = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + pos));
@@ -940,6 +941,8 @@ void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVa
             quint32 rgPersistOffset = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + pos));
             if(physicalStruct(rgPersistOffset, documentData, tmpVar))
             {
+
+                bool isCompressData = ST_RI(tmpVar) == 1;
                 quint32 dataPos = ST_SP(tmpVar);
                 quint32 ftSize = ST_SZ(tmpVar);
                 if(isCompressData)
@@ -949,9 +952,11 @@ void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVa
                 }
                 // ========== 使用 inflate 流式解压 ==========
 
+                pos = dataPos;
                 //数据开始
                 const uchar* oleDataStart = reinterpret_cast<const uchar*>(documentData.data() + pos);
                 QFile file(qsAttachmentPath + "/tmp");
+                file.remove();
                 if(file.open(QIODevice::WriteOnly | QIODevice::Append))
                 {
                     z_stream strm;
@@ -959,33 +964,33 @@ void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVa
                     strm.zalloc = Z_NULL;
                     strm.zfree = Z_NULL;
                     strm.opaque = Z_NULL;
-                    inflateInit(&strm);
+                    int ret = inflateInit(&strm);
                     quint32 bufferPos = pos;
                     quint32 bufferSize = 65535;
                     strm.avail_in = ftSize;
                     strm.next_in = const_cast<Bytef*>(oleDataStart);
-
+                    QByteArray outPutData(bufferSize, 0);
                     do
                     {
-                        QByteArray outPutData(bufferSize, 0);
+
                         strm.avail_out = bufferSize;
                         strm.next_out = reinterpret_cast<Bytef*>(outPutData.data());
-                        if (strm.total_in + bufferSize >= ftSize)
-                        {
-                            int ret = inflate(&strm, Z_FINISH);
-                        }
-                        else
-                        {
-                            inflate(&strm, Z_NO_FLUSH);
+                        ret = inflate(&strm, Z_NO_FLUSH);
+                        if (ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
+                            qDebug() << "inflate error:" << ret;
+                            break;
                         }
 
-                        if (strm.avail_out > 0)
-                        {
-                            outPutData.resize(bufferSize - strm.avail_out);
+                        // 将本次解压出的数据写入文件
+                        quint32 have = bufferSize - strm.avail_out;
+                        if (have > 0) {
+                            file.write(outPutData.constData(), have);
                         }
-                        file.write(outPutData);
 
-                    } while (strm.total_in < ftSize);
+                    } while (ret != Z_STREAM_END && strm.avail_in > 0);
+                    if (ret != Z_STREAM_END) {
+                        qDebug() << "inflate did not complete, ret =" << ret;
+                    }
                     inflateEnd(&strm);
                     file.close();
                     ST_VarantFile varFile;
@@ -993,11 +998,13 @@ void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVa
 
                     if(ok)
                     {
-                        if(varFile.qsBaseName.isEmpty())
+                        file.remove();
+                        if(varFile.qsFileName.isEmpty())
                         {
-                            varFile.qsBaseName = QUuid::createUuid().toString();
+                            varFile.qsFileName = QUuid::createUuid().toString() + varFile.qsSuffix;
                         }
-                        QFile newFile(qsAttachmentPath + "/" + varFile.qsBaseName + varFile.qsSuffix);
+
+                        QFile newFile(qsAttachmentPath + "/" + varFile.qsFileName);
                         if(newFile.open(QIODevice::WriteOnly))
                         {
                             newFile.write(varFile.fileData);
@@ -1006,7 +1013,9 @@ void parserPersistDirectoryAtom(const QByteArray &documentData, ST_Variable stVa
                     }
                 }
             }
+            break;
         }
+        pos += 4;
     }
 }
 
@@ -1014,12 +1023,13 @@ quint32 parserExOleEmbedContainer(const QByteArray &documentData, ST_Variable st
 {
     ST_Variable tmpVar = stVar;
     //ExOleEmbedAtom
-    if (ST_TP(stVar) != RT_ExternalOleEmbedAtom)
-    {
-        return 0;
-    }
-    quint32 startPos = ST_SP(stVar);
 
+//    if (ST_TP(stVar) != RT_ExternalOleEmbedAtom)
+//    {
+//        return 0;
+//    }
+    quint32 startPos = ST_SP(stVar) + 16;
+    physicalStruct(startPos, documentData, stVar);
     quint32 exColorFollow = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
     startPos += 4;
     //是否需要锁定ole服务器
@@ -1034,11 +1044,8 @@ quint32 parserExOleEmbedContainer(const QByteArray &documentData, ST_Variable st
     quint8 OleEmbedAtomUnused = qFromLittleEndian<quint8>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
     startPos += 1;
     // ExOleObjAtom
-    bool isValid = physicalStruct(startPos, documentData, stVar);
-    if (!isValid || ST_TP(stVar) != RT_ExternalOleObjectAtom)
-    {
-        return 0;
-    }
+    physicalStruct(startPos, documentData, stVar);
+
     //指定 OLE 对象用哪种"视图方面"来显示
     quint32 drawAspect = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(documentData.constData() + startPos));
     startPos += 4;
@@ -1067,6 +1074,7 @@ void WppComment::extractAttachment(const QByteArray &documentData, const QString
 
     bool haveOleFile = false;
 //    ST_Variable documnetVar;
+    ST_Variable documentVar;
     ST_Variable externalOleObjStgVar;
     ST_Variable persistDirectoryVar;
     do
@@ -1083,79 +1091,96 @@ void WppComment::extractAttachment(const QByteArray &documentData, const QString
                 externalOleObjStgVar = stVar;
                 haveOleFile = true;
             }
+            else if (ST_TP(stVar) == RT_Document)
+            {
+                documentVar = stVar;
+            }
         }
         pos = ST_EP(stVar);
     } while (isValid);
 
+
     if(haveOleFile)
     {
-        bool iscompressData = false;
-        if(ST_RI(externalOleObjStgVar) == 1)
-        {
-            iscompressData = true;
-        }
-        else
-        {
-            iscompressData = false;
-        }
-        QList<HeaderType> subContainerList;
-        subContainerList.append(RT_ExternalAviMovie);
-        subContainerList.append(RT_ExternalCdAudio);
-        subContainerList.append(RT_ExternalOleControl);
-        subContainerList.append(RT_ExternalHyperlink);
-        subContainerList.append(RT_ExternalMciMovie);
-        subContainerList.append(RT_ExternalMidiAudio);
-        subContainerList.append(RT_ExternalOleEmbed);
-        subContainerList.append(RT_ExternalOleLink);
-        subContainerList.append(RT_ExternalWavAudioEmbedded);
-        subContainerList.append(RT_ExternalWavAudioLink);
-        quint32 externOleObjAtomPos = ST_SP(externalOleObjStgVar);
-        physicalStruct(externOleObjAtomPos, documentData, stVar);
-        quint32 externOleObjsubContainerPos = ST_EP(stVar);
-
+        pos = ST_SP(documentVar);
+        bool isHaveObjContainer = false;
+        quint32 exObjListContainerPos = 0;
         do
         {
-            isValid = physicalStruct(externOleObjsubContainerPos, documentData, stVar);
-            if (isValid && subContainerList.contains((HeaderType)ST_TP(stVar) ))
+            physicalStruct(pos, documentData, stVar);
+            if(ST_TP(stVar) == RT_ExternalObjectList)
             {
-                switch (ST_TP(stVar))
+                if(ST_SZ(stVar) - 12 > 0)
                 {
-                case RT_ExternalAviMovie:
-                    break;
-                case RT_ExternalCdAudio:
-                    break;
-                case RT_ExternalOleControl:
-                    break;
-                case RT_ExternalHyperlink:
-                    break;
-                case RT_ExternalMciMovie:
-                    break;
-                case RT_ExternalMidiAudio:
-                    break;
-                case RT_ExternalOleEmbed:{
-                    quint32 idRef = parserExOleEmbedContainer(documentData, stVar);
-                    if(idRef != 0)
-                    {
-                        parserPersistDirectoryAtom(documentData, persistDirectoryVar, idRef, qsAttachmentPath);
-                    }
+                    exObjListContainerPos = ST_SP(stVar) + 12;
+                    isHaveObjContainer = true;
                 }
-                    break;
-                case RT_ExternalOleLink:
-                    break;
-                case RT_ExternalWavAudioEmbedded:
-                    break;
-                case RT_ExternalWavAudioLink:
-                    break;
-                default:
-                    break;
-                }
-                externOleObjsubContainerPos += ST_SZ(stVar);
-            }
-            else
-            {
                 break;
             }
-        } while (true);
+            pos = ST_EP(stVar);
+        }while(pos < ST_EP(documentVar));
+
+        if(isHaveObjContainer)
+        {
+            pos = exObjListContainerPos;
+            QList<HeaderType> subContainerList;
+            subContainerList.append(RT_ExternalAviMovie);
+            subContainerList.append(RT_ExternalCdAudio);
+            subContainerList.append(RT_ExternalOleControl);
+            subContainerList.append(RT_ExternalHyperlink);
+            subContainerList.append(RT_ExternalMciMovie);
+            subContainerList.append(RT_ExternalMidiAudio);
+            subContainerList.append(RT_ExternalOleEmbed);
+            subContainerList.append(RT_ExternalOleLink);
+            subContainerList.append(RT_ExternalWavAudioEmbedded);
+            subContainerList.append(RT_ExternalWavAudioLink);
+            do
+            {
+                isValid = physicalStruct(pos, documentData, stVar);
+                if (isValid && subContainerList.contains((HeaderType)ST_TP(stVar) ))
+                {
+                    switch (ST_TP(stVar))
+                    {
+                    case RT_ExternalAviMovie:
+                        break;
+                    case RT_ExternalCdAudio:
+                        break;
+                    case RT_ExternalOleControl:
+                        break;
+                    case RT_ExternalHyperlink:
+                        break;
+                    case RT_ExternalMciMovie:
+                        break;
+                    case RT_ExternalMidiAudio:
+                        break;
+                    case RT_ExternalOleEmbed:{
+                        quint32 idRef = parserExOleEmbedContainer(documentData, stVar);
+                        if(idRef != 0)
+                        {
+                            parserPersistDirectoryAtom(documentData, persistDirectoryVar, idRef, qsAttachmentPath);
+                        }
+                    }
+                        break;
+                    case RT_ExternalOleLink:
+                        break;
+                    case RT_ExternalWavAudioEmbedded:
+                        break;
+                    case RT_ExternalWavAudioLink:
+                        break;
+                    default:
+                        break;
+                    }
+                    pos = ST_EP(stVar);
+                }
+                else
+                {
+                    break;
+                }
+            } while (true);
+        }
+
+        //physicalStruct(externOleObjAtomPos, documentData, stVar);
+        //quint32 externOleObjsubContainerPos = ST_EP(stVar);
     }
 }
 

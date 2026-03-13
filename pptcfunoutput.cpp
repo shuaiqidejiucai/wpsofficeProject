@@ -285,19 +285,19 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
 
 //    if(elementType & ImageElementType)
 //    {
-
 //    }
+
+    bool isPPT = false;
     if(elementType & AttachmentElementType)
     {
         QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
         QByteArray pptAttachmentData;
         QByteArray pptImageData;
-        bool isPPT = wpp->isPPTFormate(qsInputfilepath, pptAttachmentData, pptImageData);
+        isPPT = wpp->isPPTFormate(qsInputfilepath, pptAttachmentData, pptImageData);
         if(isPPT)
         {
             wpp->extractAttachment(pptAttachmentData, qsAttachmentDir);
         }
-
     }
     if(wpp->openWPPDoc(qsInputfilepath))
     {
