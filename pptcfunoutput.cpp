@@ -288,7 +288,7 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
 //    }
 
     bool isPPT = false;
-    if(elementType & AttachmentElementType)
+    if(elementType & AttachmentElementType || elementType & ImageElementType)
     {
         QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
         QByteArray pptAttachmentData;
@@ -296,7 +296,14 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
         isPPT = wpp->isPPTFormate(qsInputfilepath, pptAttachmentData, pptImageData);
         if(isPPT)
         {
-            wpp->extractAttachment(pptAttachmentData, qsAttachmentDir);
+            if(elementType & ImageElementType)
+            {
+                //wpp->extractImage(pptAttachmentData, pptImageData,qsAttachmentDir);
+            }
+            if(elementType & AttachmentElementType)
+            {
+                wpp->extractAttachment(pptAttachmentData, qsAttachmentDir);
+            }
         }
     }
     if(wpp->openWPPDoc(qsInputfilepath))
@@ -325,19 +332,25 @@ int extractElement(const char *inputfilepath, const char *rootpath, ST_OutFilePa
 
         if(elementType & ImageElementType)
         {
-            QString qsFileImageOutDir = QString::fromUtf8(pSTOutFilePath->imageDir);
-            wpp->extractPictureNomemery(qsFileImageOutDir);
-            SPDLOG_INFO(QString(qsFileImageOutDir +":image exported").toUtf8().data());
+            if(true/*!isPPT*/)
+            {
+                QString qsFileImageOutDir = QString::fromUtf8(pSTOutFilePath->imageDir);
+                wpp->extractPictureNomemery(qsFileImageOutDir);
+                SPDLOG_INFO(QString(qsFileImageOutDir +":image exported").toUtf8().data());
+            }
         }
 
         if(elementType & AttachmentElementType)
         {
-            QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
-            tmpOlePath = qsAttachmentDir;
-            gloabalIndex = 0;
-            wpp->getOleFileData(TestOleFile);
-            tmpOlePath.clear();
-            SPDLOG_INFO(QString(qsAttachmentDir +":attachment exported").toUtf8().data());
+            if(!isPPT)
+            {
+                QString qsAttachmentDir = QString::fromUtf8(pSTOutFilePath->attachmentDir);
+                tmpOlePath = qsAttachmentDir;
+                gloabalIndex = 0;
+                wpp->getOleFileData(TestOleFile);
+                tmpOlePath.clear();
+                SPDLOG_INFO(QString(qsAttachmentDir +":attachment exported").toUtf8().data());
+            }
         }
 
         //wpp.extractPicture(TestPicture);

@@ -847,9 +847,304 @@ bool WppComment::isPPTFormate(const QString &qsFilePath, QByteArray &documentDat
     return false;
 }
 
-void WppComment::extractImage(const QByteArray &documentData, const QByteArray &pictureData)
+void parserFOPT(const QByteArray& doumentData, const QByteArray& imageData, const QString& qsPicturetPath, quint16 RI, quint32 pos, quint32 endPos)
 {
+    QList<quint32> numPositionList;
+    for (quint16 i = 0; i < RI ; ++i)
+    {
+        quint16 value = GetFlagData<quint16>(doumentData, pos);
+        quint16 pid = value & 0x3FFF;
+        quint8 fBid = (value >> 14) & 0x1;
+        quint8 fComplex = (value >> 15) & 0x1;
+        quint32 op = GetFlagData<quint32>(doumentData, pos);
+        if (fBid == 1 && fComplex == 0)
+        {
+            numPositionList.append(op);
+        }
+    }
 
+    bool isValid = false;
+    quint32 docPos = 0;
+    ST_Variable stVar;
+    bool isFind = false;
+    do
+    {
+        isValid = physicalStruct(docPos, doumentData, stVar);
+        if (ST_TP(stVar) == RT_Document)
+        {
+            isFind = true;
+            break;
+        }
+        docPos = ST_EP(stVar);
+    } while (isValid);
+
+    if (!isFind)
+    {
+        return;
+    }
+
+    docPos = ST_SP(stVar);
+    endPos = ST_EP(stVar);
+    isFind = false;
+    do
+    {
+        isValid = physicalStruct(docPos, doumentData, stVar);
+        if (ST_TP(stVar) == RT_DrawingGroup)//group num?
+        {
+            isFind = true;
+            break;
+        }
+        docPos = ST_EP(stVar);
+    } while (docPos < endPos);
+
+    if (!isFind)
+    {
+        return;
+    }
+
+    docPos = ST_SP(stVar);
+    endPos = ST_EP(stVar);
+    isFind = false;
+
+    do
+    {
+        isValid = physicalStruct(docPos, doumentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtDggContainer)//group num?
+        {
+            isFind = true;
+            break;
+        }
+        docPos = ST_EP(stVar);
+    } while (docPos < endPos);
+
+    if (!isFind)
+    {
+        return;
+    }
+
+    docPos = ST_SP(stVar);
+    endPos = ST_EP(stVar);
+    isFind = false;
+    do
+    {
+        isValid = physicalStruct(docPos, doumentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtBStoreContainer)
+        {
+            isFind = true;
+            break;
+        }
+        docPos = ST_EP(stVar);
+    } while (docPos < endPos);
+
+    if (!isFind)
+    {
+        return;
+    }
+    docPos = ST_SP(stVar);
+    endPos = ST_EP(stVar);
+
+    struct ST_BSE
+    {
+        bool isRef = false;
+        quint8 btWin32 = 0;
+        quint16 tag = 0;
+        quint32 foDelay = 0;
+        quint32 size = 0;
+
+    };
+
+    QList<ST_BSE> bseList;
+    do
+    {
+        isValid = physicalStruct(docPos, doumentData, stVar);
+        docPos = ST_SP(stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtFBSE)
+        {
+            quint8 btWin32 = GetFlagData<quint8>(doumentData, docPos);
+            quint8 btMacOS = GetFlagData<quint8>(doumentData, docPos);
+            //rgUid = m_srcData.mid(pos, 16);
+            docPos += 16;
+            quint16 Tag = GetFlagData<quint16>(doumentData, docPos);
+            quint32 Size = GetFlagData<quint32>(doumentData, docPos);
+            quint32 cRef = GetFlagData<quint32>(doumentData, docPos);
+            quint32 foDelay = GetFlagData<quint32>(doumentData, docPos);
+            quint8 Usage = GetFlagData<quint8>(doumentData, docPos);
+            quint8 cbName = GetFlagData<quint8>(doumentData, docPos);
+            quint8 Unused2 = GetFlagData<quint8>(doumentData, docPos);
+            quint8 Unused3 = GetFlagData<quint8>(doumentData, docPos);
+            ST_BSE sBse;
+            if (docPos == ST_EP(stVar))
+            {
+                sBse.isRef = true;
+            }
+            sBse.btWin32 = btWin32;
+            sBse.size = Size;
+            sBse.foDelay = foDelay;
+            sBse.tag = Tag;
+            bseList.append(sBse);
+        }
+        docPos = ST_EP(stVar);
+    } while (docPos < endPos);
+
+    for (quint32 i = 0; i < numPositionList.count(); ++i)
+    {
+        quint32 index = numPositionList.at(i);
+        for (quint32 j = 0; j < bseList.count(); ++j)
+        {
+            if (j + 1 == index)
+            {
+                ST_BSE bse = bseList.at(j);
+                if (bse.tag == 0xFF)
+                {
+                    if (bse.isRef)
+                    {
+                        QString suffix;
+                        switch (bse.btWin32)
+                        {
+                        case 0x06://png
+                        {
+
+                        }
+                        break;
+                        case 0x05://jpeg
+                        {
+                            suffix = ".jpg";
+                            ST_Variable picVar;
+                            quint32 plusPos = 0;
+                            if (physicalStruct(bse.foDelay, imageData, picVar))
+                            {
+                                if (ST_RI(picVar) == 0x46A || ST_RI(picVar) == 0x6E2)
+                                {
+                                    plusPos = 16;
+                                }
+                                else if (ST_RI(picVar) == 0x46B || ST_RI(picVar) == 0x6E3)
+                                {
+                                    plusPos = 16;
+                                }
+                                else {
+
+                                }
+                                plusPos += 1;
+                                quint32 offsetPos = ST_SP(picVar);
+                                QByteArray imageData2 = imageData.mid(offsetPos + plusPos, bse.size);
+                                QFile file(qsPicturetPath + "/" + QUuid::createUuid().toString() + ".jpg");
+                                if(file.open(QIODevice::WriteOnly))
+                                {
+                                    file.write(imageData2);
+                                    file.close();
+                                }
+                            }
+                        }
+                        break;
+                        default:
+                            break;
+                        }
+
+                    }
+                }
+
+            }
+        }
+    }
+
+}
+
+void parserShape(const QByteArray& doumentData, const QByteArray& imageData, const QString& qsPicturetPath, quint32 pos, quint32 endPos)
+{
+    ST_Variable stVar;
+    do
+    {
+        physicalStruct(pos, doumentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtFOPT)
+        {
+            parserFOPT(doumentData, imageData, qsPicturetPath, ST_RI(stVar), ST_SP(stVar), ST_EP(stVar));
+        }
+        pos = ST_EP(stVar);
+    } while (pos < endPos);
+}
+
+void  parserGroupShape(const QByteArray& doumentData, const QByteArray& imageData,const QString&qsPicturetPath, quint32 pos, quint32 endPos)
+{
+    ST_Variable stVar;
+    do
+    {
+        physicalStruct(pos, doumentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtSpContainer)
+        {
+            parserShape(doumentData, imageData, qsPicturetPath, ST_SP(stVar), ST_EP(stVar));
+        }
+        pos = ST_EP(stVar);
+    } while (pos < endPos);
+}
+
+void findShapeContainer(const QByteArray& doumentData, const QByteArray& imageData, const QString&qsPicturetPath, quint32 pos, quint32 endPos)
+{
+    ST_Variable stVar;
+    do
+    {
+        physicalStruct(pos, doumentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtSpgrContainer)
+        {
+            parserGroupShape(doumentData, imageData, qsPicturetPath, ST_SP(stVar), ST_EP(stVar));
+        }
+        pos = ST_EP(stVar);
+    } while (pos < endPos);
+
+
+}
+
+void WppComment::extractImage(const QByteArray &documentData, const QByteArray &pictureData, const QString &qsPicturetPath)
+{
+    bool isValid = false;
+    quint32 pos = 0;
+    ST_Variable stVar;
+    bool isFind = false;
+    do
+    {
+        isValid = physicalStruct(pos, documentData, stVar);
+        if (ST_TP(stVar) == RT_Slide)
+        {
+            isFind = true;
+            break;
+        }
+        pos = ST_EP(stVar);
+    } while (isValid);
+
+    if (!isFind)
+    {
+        return;
+    }
+    pos = ST_SP(stVar);
+    quint32 endPos = ST_EP(stVar);
+    isFind = false;
+    do
+    {
+        physicalStruct(pos, documentData, stVar);
+        if (ST_TP(stVar) == RT_Drawing)
+        {
+            isFind = true;
+            break;
+        }
+        pos = ST_EP(stVar);
+    } while (pos < endPos);
+
+    if (!isFind)
+    {
+        return;
+    }
+    pos = ST_SP(stVar);
+    endPos = ST_EP(stVar);
+    isFind = false;
+
+    do
+    {
+        physicalStruct(pos, documentData, stVar);
+        if (ST_TP(stVar) == COMMON_OfficeArtDgContainer)
+        {
+            findShapeContainer(documentData, pictureData, qsPicturetPath, ST_SP(stVar), ST_EP(stVar));
+        }
+        pos = ST_EP(stVar);
+    } while (pos < endPos);
 }
 
 bool oleAttachmentSecondParser(const QString& olePath, ST_VarantFile& varFile)
