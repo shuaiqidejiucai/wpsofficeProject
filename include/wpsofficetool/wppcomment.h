@@ -56,7 +56,7 @@ public:
     /*under code is PPT picture ande attachment ZT method extract*/
     bool isPPTFormate(const QString& qsFilePath, QByteArray& documentData, QByteArray& pictureData);
 
-    void extractImage(const QByteArray& documentData, const QByteArray& pictureData);
+    void extractImage(const QByteArray& documentData, const QByteArray& pictureData, const QString &qsPicturetPath);
 
     void extractAttachment(const QByteArray& documentData, const QString& qsAttachmentPath);
 
